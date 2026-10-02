@@ -1,7 +1,8 @@
 """Composition root for the `ingestor` process (ADR 0001).
 
 Consumes device traffic from the broker and hands each message kind to the module that
-owns it: presence and state to `devices`, telemetry to `telemetry` (batched writes).
+owns it: presence and state to `devices`, telemetry to `telemetry` (batched writes),
+command acks to `commands`.
 Same modules as the API, different entrypoint.
 """
 
@@ -11,6 +12,8 @@ from pathlib import Path
 
 import structlog
 
+from smarthome.modules.commands import wiring as commands
+from smarthome.modules.commands.api.mqtt import handlers as command_handlers
 from smarthome.modules.devices import wiring as devices
 from smarthome.modules.devices.api.mqtt import handlers as device_handlers
 from smarthome.modules.telemetry import wiring as telemetry
@@ -49,7 +52,11 @@ async def run(settings: Settings) -> None:
     try:
         await ensure_hub_account(settings)
         await telemetry.apply_configured_retention(settings, engine)
-        service = devices.build_service(settings, engine=engine, redis=redis, clock=SystemClock())
+        clock = SystemClock()
+        service = devices.build_service(settings, engine=engine, redis=redis, clock=clock)
+        command_service = commands.build_service(
+            settings, engine=engine, devices=service, clock=clock
+        )
         ingest, buffer = telemetry.build_ingest(
             settings, engine=engine, redis=redis, devices=service
         )
@@ -62,7 +69,9 @@ async def run(settings: Settings) -> None:
                 password=settings.mqtt_hub_password.get_secret_value(),
                 heartbeat_file=HEARTBEAT_FILE,
             ),
-            handlers=device_handlers(service) | telemetry_handlers(ingest),
+            handlers=device_handlers(service)
+            | telemetry_handlers(ingest)
+            | command_handlers(command_service),
         )
         stop = asyncio.Event()
         loop = asyncio.get_running_loop()

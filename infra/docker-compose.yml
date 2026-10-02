@@ -180,6 +180,34 @@ services:
     security_opt: ["no-new-privileges:true"]
     cap_drop: ["ALL"]
 
+  worker:
+    <<: *api-image
+    command: ["smarthome-worker"]
+    environment: *api-env
+    volumes:
+      - ./mqtt/certs/ca.crt:/certs/ca.crt:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mqtt:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # The ingestor creates the hub's MQTT account the worker publishes with.
+      ingestor:
+        condition: service_healthy
+    healthcheck:
+      # Healthy while its periodic jobs keep running (they touch the heartbeat file).
+      test: ["CMD", "python", "-c", "import os, sys, time; sys.exit(0 if time.time() - os.path.getmtime('/tmp/worker-heartbeat') < 30 else 1)"]
+      interval: 10s
+      timeout: 3s
+      start_period: 15s
+      retries: 3
+    read_only: true
+    tmpfs: ["/tmp"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+
 volumes:
   mqttdata:
   pgdata:

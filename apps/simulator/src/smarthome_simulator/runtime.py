@@ -21,6 +21,7 @@ from paho.mqtt.properties import Properties
 from paho.mqtt.reasoncodes import ReasonCode
 
 from device_protocol import DELIVERY, MessageKind, encode, topic
+from smarthome_simulator import tracing
 from smarthome_simulator.devices import SimulatedDevice
 
 log = logging.getLogger("smarthome_simulator")
@@ -74,11 +75,19 @@ class DeviceRunner:
         return topic(self.device.home_id, self.device.device_id, kind)
 
     async def _publish(
-        self, client: aiomqtt.Client, kind: MessageKind, payload: dict[str, object]
+        self,
+        client: aiomqtt.Client,
+        kind: MessageKind,
+        payload: dict[str, object],
+        properties: Properties | None = None,
     ) -> None:
         delivery = DELIVERY[kind]
         await client.publish(
-            self._topic(kind), encode(kind, payload), qos=delivery.qos, retain=delivery.retain
+            self._topic(kind),
+            encode(kind, payload),
+            qos=delivery.qos,
+            retain=delivery.retain,
+            properties=properties,
         )
 
     async def run(self, stop: asyncio.Event) -> None:
@@ -173,9 +182,18 @@ class DeviceRunner:
     async def _commands(self, client: aiomqtt.Client) -> None:
         async for message in client.messages:
             raw = message.payload if isinstance(message.payload, bytes) else b""
-            outcome = self.device.handle_command(raw, now())
-            for ack in outcome.acks:
-                await self._publish(client, MessageKind.COMMAND_ACK, ack)
+            with tracing.handling_command(
+                message.properties,
+                device_id=self.device.device_id,
+                kind=self.device.kind.value,
+            ) as span:
+                outcome = self.device.handle_command(raw, now())
+                if outcome.acks:
+                    span.set_attribute("smarthome.command.status", outcome.acks[-1]["status"])
+                for ack in outcome.acks:
+                    await self._publish(
+                        client, MessageKind.COMMAND_ACK, ack, tracing.publish_properties()
+                    )
             if outcome.state_changed and (state := self.device.state_message(now())):
                 await self._publish(client, MessageKind.STATE, state)
             if outcome.acks:

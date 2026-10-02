@@ -87,8 +87,10 @@ $(SIM_DIR)/fleet.json:
 	  --api http://localhost:$${API_PORT:-8000} --ca-file $(CURDIR)/infra/mqtt/certs/ca.crt
 
 .PHONY: simulate
-simulate: .env certs $(SIM_DIR)/fleet.json ## Pair (first run only) and run 3 homes x 20 devices (HOMES, DEVICES, SPEED, FAULTS)
-	$(SIM) run $(SIM_DIR)/fleet.json --speed $(SPEED) --fault-rate $(FAULTS)
+simulate: .env certs $(SIM_DIR)/fleet.json ## Pair (first run only) and run 3 homes x 20 devices (HOMES, DEVICES, SPEED, FAULTS); device spans go to the collector
+	set -a; source .env; set +a; \
+	  export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:$${OTEL_GRPC_PORT:-4317}; \
+	  $(SIM) run $(SIM_DIR)/fleet.json --speed $(SPEED) --fault-rate $(FAULTS)
 
 .PHONY: simulate-reset
 simulate-reset: ## Forget the simulated fleet; the next `make simulate` pairs a new one

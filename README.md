@@ -4,7 +4,7 @@ A multi-tenant smart home hub built to show **event-driven design, real-time
 telemetry, time-series storage, device security and observability**. Real hardware
 is optional: a simulator speaks the same MQTT protocol a real ESP32 would.
 
-> **Status:** phase 6 of 11 (telemetry). Most of the product below is still on the roadmap.
+> **Status:** phase 7 of 11 (commands). Most of the product below is still on the roadmap.
 > [Versão em português](README.pt-BR.md).
 
 ## What it will do
@@ -126,6 +126,25 @@ and going, lights following presence and darkness, a fridge compressor cycle, a 
 It also injects faults: dropped connections (seen through the Last Will), noisy readings,
 malformed payloads and draining batteries.
 
+## Commands
+
+```http
+POST /homes/{home}/devices/{device}/commands      {"action": "set_state", "desired": {"on": true}}
+GET  /homes/{home}/devices/{device}/commands/{id} # pending → delivered → acknowledged | failed | timed_out
+```
+
+`POST` answers `202` at once: the command and its MQTT message are written in one
+transaction (a **transactional outbox**), and the `worker` publishes it after commit,
+woken by `NOTIFY` ([ADR 0009](docs/adr/0009-commands-outbox-and-trace-propagation.md)).
+The device acks over MQTT and the ingestor records the outcome; a command nobody answers
+by its deadline (`ttl_s`, default 30 s) is marked `timed_out`, and a late answer cannot
+change that. Locks and cameras need `operate_locks` and a sign-in from the last
+5 minutes, otherwise the API returns `401` with a `login_url` that forces a fresh login.
+
+Every command has a `trace_id`. With the simulator running, open it in Tempo and you see
+one trace across four services: the API request, the worker's publish, the device
+handling the command and the ingestor receiving its acks.
+
 ## Tour: follow one request through every signal
 
 ```bash
@@ -184,7 +203,7 @@ scripts/        repo tooling (import contract generator)
 4. ✅ Device protocol and MQTT broker with TLS and ACLs, basic simulator
 5. ✅ Devices and provisioning: pairing, credentials, twin, LWT
 6. ✅ Telemetry: batched ingestion, hypertables, continuous aggregates
-7. Commands: ack, timeout, idempotency, trace propagation over MQTT
+7. ✅ Commands: ack, timeout, idempotency, trace propagation over MQTT
 8. Automations: DSL, rule engine, scenes, schedules, dry run
 9. Frontend: live floor plan, automation editor, history, PWA
 10. Energy, notifications, dashboards, alerts, load test

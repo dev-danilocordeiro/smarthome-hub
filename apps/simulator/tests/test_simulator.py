@@ -117,6 +117,19 @@ def test_a_device_rejects_properties_it_does_not_have() -> None:
     assert "brightness_pct" in outcome.acks[-1]["reason"]
 
 
+def test_an_older_set_state_arriving_late_does_not_undo_a_newer_one() -> None:
+    sim = device(DeviceType.LIGHT)
+    newer = command(issued_at=(T0 + timedelta(seconds=2)).isoformat(), desired={"on": False})
+    older = command(issued_at=T0.isoformat(), desired={"on": True})
+
+    sim.handle_command(newer, T0 + timedelta(seconds=3))
+    outcome = sim.handle_command(older, T0 + timedelta(seconds=3))
+
+    assert outcome.acks[-1]["status"] == "rejected"
+    assert outcome.acks[-1]["reason"] == "superseded by a newer command"
+    assert sim.state["on"] is False
+
+
 def test_garbage_on_the_command_topic_is_ignored() -> None:
     assert device(DeviceType.LIGHT).handle_command(b"{not json", T0).acks == []
 

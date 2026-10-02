@@ -105,3 +105,17 @@ def require_home_access(permission: Permission) -> Callable[..., Awaitable[HomeA
         return await module.service.access(principal, HomeId(home_id), permission)
 
     return dependency
+
+
+def require_device_access(permission: Permission) -> Callable[..., Awaitable[HomeAccess]]:
+    """Dependency for `/homes/{home_id}/devices/{device_id}/...` routes: like
+    `require_home_access`, plus a guest's device scope for device permissions."""
+
+    async def dependency(
+        home_id: UUID, device_id: str, principal: CurrentPrincipal, module: Identity
+    ) -> HomeAccess:
+        return await module.service.access(
+            principal, HomeId(home_id), permission, device_id=device_id
+        )
+
+    return dependency
