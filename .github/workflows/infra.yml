@@ -1,0 +1,27 @@
+name: infra
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "infra/**"
+      - "scripts/check_dashboards.py"
+      - "Makefile"
+      - ".env.example"
+      - ".github/workflows/infra.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  configs:
+    name: compose, collector, prometheus, tempo, loki, dashboards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make check-infra

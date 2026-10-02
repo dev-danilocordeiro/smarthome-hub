@@ -8,12 +8,21 @@ dependencies = [
   "uvicorn[standard]>=0.32",
   "pydantic>=2.9",
   "pydantic-settings>=2.6",
-  "sqlalchemy[asyncio]>=2.0.36",
+  # <2.1 until opentelemetry-instrumentation-sqlalchemy supports 2.1; without it queries
+  # silently stop producing spans and pool metrics (caught by tests/integration).
+  "sqlalchemy[asyncio]>=2.0.36,<2.1",
   "asyncpg>=0.30",
   "alembic>=1.14",
   "redis>=5.2",
   "structlog>=24.4",
   "device-protocol",
+  "opentelemetry-api (>=1.45.0,<2.0.0)",
+  "opentelemetry-sdk (>=1.45.0,<2.0.0)",
+  "opentelemetry-exporter-otlp-proto-grpc (>=1.45.0,<2.0.0)",
+  "opentelemetry-instrumentation-fastapi (>=0.66b0,<0.67)",
+  "opentelemetry-instrumentation-sqlalchemy (>=0.66b0,<0.67)",
+  "opentelemetry-instrumentation-redis (>=0.66b0,<0.67)",
+  "opentelemetry-instrumentation-system-metrics (>=0.66b0,<0.67)",
 ]
 
 [tool.poetry]

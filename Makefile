@@ -1,10 +1,13 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-COMPOSE := docker compose --env-file .env -f infra/docker-compose.yml
+COMPOSE := docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.observability.yml
 PY_APPS := apps/api apps/ingestor apps/worker apps/simulator
 API     := cd apps/api && poetry run
 RUFF    := apps/api/.venv/bin/ruff
+
+# Image of a compose service, read from the compose files so versions live in one place.
+image = $(shell $(COMPOSE) config --format json | python3 -c "import json,sys; print(json.load(sys.stdin)['services']['$(1)']['image'])")
 
 .PHONY: help
 help: ## List targets
@@ -52,6 +55,10 @@ api-dev: .env ## Run the API on the host with reload (needs postgres + redis up)
 	set -a; source .env; set +a; cd apps/api && poetry run alembic upgrade head && \
 	  poetry run uvicorn smarthome.main:create_app --factory --reload --port $${API_PORT:-8000}
 
+.PHONY: demo-traffic
+demo-traffic: ## Generate mixed traffic for the dashboards (SECONDS=120 RPS=10)
+	python3 scripts/demo_traffic.py --seconds $${SECONDS:-120} --rps $${RPS:-10}
+
 .PHONY: web-dev
 web-dev: ## Run the Vite dev server
 	npm run -w apps/web dev
@@ -83,8 +90,21 @@ typecheck: ## mypy --strict on every Python app, tsc on the web app
 	@for app in $(PY_APPS); do echo "==> mypy $$app"; (cd $$app && poetry run mypy) || exit 1; done
 	npm run -w apps/web typecheck
 
+.PHONY: check-infra
+check-infra: .env ## Validate compose, collector, Prometheus, Tempo, Loki and dashboard configs
+	$(COMPOSE) config --quiet
+	docker run --rm -v $(CURDIR)/infra/otel-collector/config.yaml:/c.yaml:ro \
+	  $(call image,otel-collector) validate --config=/c.yaml
+	docker run --rm --entrypoint promtool -v $(CURDIR)/infra/prometheus:/p:ro \
+	  $(call image,prometheus) check config /p/prometheus.yml
+	docker run --rm -v $(CURDIR)/infra/tempo/tempo.yaml:/t.yaml:ro \
+	  $(call image,tempo) -config.file=/t.yaml -config.verify=true
+	docker run --rm -v $(CURDIR)/infra/loki/loki.yaml:/l.yaml:ro \
+	  $(call image,loki) -config.file=/l.yaml -verify-config
+	python3 scripts/check_dashboards.py
+
 .PHONY: check
-check: lint typecheck ## Every static gate CI runs
+check: lint typecheck ## Every static gate CI runs (plus check-infra, which needs Docker)
 
 # --- Tests -------------------------------------------------------------------
 

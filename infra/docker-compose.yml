@@ -14,6 +14,7 @@ x-api-env: &api-env
   SMARTHOME_LOG_JSON: ${SMARTHOME_LOG_JSON:-true}
   SMARTHOME_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?set in .env}:${POSTGRES_PASSWORD:?set in .env}@postgres:5432/${POSTGRES_DB:?set in .env}
   SMARTHOME_REDIS_URL: redis://redis:6379/0
+  SMARTHOME_DIAGNOSTICS_ENABLED: ${SMARTHOME_DIAGNOSTICS_ENABLED:-false}
 
 services:
   postgres:

@@ -7,6 +7,8 @@ from fastapi import APIRouter, Request, Response, status
 from pydantic import BaseModel
 from sqlalchemy import text
 
+from smarthome.shared.observability import untraced
+
 if TYPE_CHECKING:
     from redis.asyncio import Redis
     from sqlalchemy.ext.asyncio import AsyncEngine
@@ -67,8 +69,10 @@ async def _probe(
     name: str, fn: Callable[[], Awaitable[None]], budget_seconds: float
 ) -> CheckStatus:
     try:
-        async with asyncio.timeout(budget_seconds):
-            await fn()
+        # Probes run every few seconds; their spans would drown out real traffic.
+        with untraced():
+            async with asyncio.timeout(budget_seconds):
+                await fn()
     except Exception as exc:  # noqa: BLE001 - any failure means "not ready"; details go to the log
         log.warning("readiness_probe_failed", dependency=name, error_type=type(exc).__name__)
         return "down"

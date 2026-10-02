@@ -8,6 +8,12 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from asgi_lifespan import LifespanManager
+from opentelemetry import metrics, trace
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from pydantic import PostgresDsn, RedisDsn
 from testcontainers.community.postgres import PostgresContainer
 from testcontainers.community.redis import RedisContainer
@@ -18,6 +24,30 @@ from smarthome.shared.config import Environment, Settings
 # Keep in sync with infra/docker-compose.yml.
 TIMESCALE_IMAGE = "timescale/timescaledb:2.30.2-pg16"
 REDIS_IMAGE = "redis:7.4.11-alpine"
+
+
+@pytest.fixture(scope="session")
+def span_exporter() -> InMemorySpanExporter:
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    # Global providers can be set once per process; every test in the session shares them.
+    trace.set_tracer_provider(provider)
+    return exporter
+
+
+@pytest.fixture(scope="session")
+def metric_reader() -> InMemoryMetricReader:
+    reader = InMemoryMetricReader()
+    metrics.set_meter_provider(MeterProvider(metric_readers=[reader]))
+    return reader
+
+
+@pytest.fixture(scope="session", autouse=True)
+def in_memory_telemetry(
+    span_exporter: InMemorySpanExporter, metric_reader: InMemoryMetricReader
+) -> None:
+    """Install in-memory providers before any app is built, as an entrypoint would."""
 
 
 @pytest.fixture(scope="session")
@@ -42,6 +72,7 @@ def settings(postgres: PostgresContainer, redis_container: RedisContainer) -> Se
         database_url=PostgresDsn(postgres.get_connection_url()),
         redis_url=RedisDsn(f"redis://{redis_host}:{redis_port}/0"),
         readiness_timeout_seconds=1.0,
+        diagnostics_enabled=True,
     )
 
 

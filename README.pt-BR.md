@@ -5,7 +5,7 @@ eventos, telemetria em tempo real, séries temporais, segurança de dispositivos
 observabilidade**. Não precisa de hardware: um simulador fala o mesmo protocolo MQTT que um
 ESP32 real falaria.
 
-> **Status:** fase 1 de 11 (fundação). A documentação completa está no [README em inglês](README.md).
+> **Status:** fase 2 de 11 (observabilidade). A documentação completa está no [README em inglês](README.md).
 
 ## Arquitetura
 
@@ -28,3 +28,15 @@ make check && make test              # gates estáticos e testes
 | PostgreSQL | `localhost:15432`        |
 | Redis      | `localhost:16379`        |
 | Web (dev)  | http://localhost:5173    |
+| Grafana    | http://localhost:3000    |
+| Prometheus | http://localhost:9090    |
+| Tempo      | http://localhost:3200    |
+| Loki       | http://localhost:3100    |
+
+## Observabilidade
+
+Todos os serviços enviam traces, métricas e logs via OTLP para o OpenTelemetry Collector,
+que distribui para Tempo, Prometheus e Loki. No Grafana, o dashboard **Service Overview**
+liga métrica → trace (exemplars) → logs (por `trace_id`). Rode `make demo-traffic` e
+siga o tour no [README em inglês](README.md#tour-follow-one-request-through-every-signal).
+Detalhes no [ADR 0002](docs/adr/0002-observability-pipeline.md).
