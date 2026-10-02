@@ -82,13 +82,22 @@ class TelemetryBuffer:
 
     async def run(self, stop: asyncio.Event) -> None:
         """Flush loop. On stop, drains what is left before returning."""
-        while not stop.is_set():
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(self._ready.wait(), timeout=self._flush_interval_s)
-            self._ready.clear()
-            await self.flush()
-        while self._rows:
-            await self.flush()
+        waker = asyncio.create_task(self._wake_on(stop))
+        try:
+            while not stop.is_set():
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(self._ready.wait(), timeout=self._flush_interval_s)
+                self._ready.clear()
+                await self.flush()
+            while self._rows:
+                await self.flush()
+        finally:
+            waker.cancel()
+
+    async def _wake_on(self, stop: asyncio.Event) -> None:
+        # Shutdown must not wait out a full flush interval.
+        await stop.wait()
+        self._ready.set()
 
     async def flush(self) -> None:
         if not self._rows:
