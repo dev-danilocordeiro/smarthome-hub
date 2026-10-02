@@ -1,0 +1,84 @@
+# Phase 1 stack: data stores + API. Further services join as their phases land.
+# Run through the Makefile (`make up`) so the root .env is picked up.
+name: smarthome
+
+x-api-image: &api-image
+  build:
+    context: ..
+    dockerfile: apps/api/Dockerfile
+  image: smarthome-api:local
+
+x-api-env: &api-env
+  SMARTHOME_ENVIRONMENT: ${SMARTHOME_ENVIRONMENT:-local}
+  SMARTHOME_LOG_LEVEL: ${SMARTHOME_LOG_LEVEL:-INFO}
+  SMARTHOME_LOG_JSON: ${SMARTHOME_LOG_JSON:-true}
+  SMARTHOME_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?set in .env}:${POSTGRES_PASSWORD:?set in .env}@postgres:5432/${POSTGRES_DB:?set in .env}
+  SMARTHOME_REDIS_URL: redis://redis:6379/0
+
+services:
+  postgres:
+    # Keep in sync with apps/api/tests/integration/conftest.py.
+    image: timescale/timescaledb:2.30.2-pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set in .env}
+    ports:
+      - "${POSTGRES_PORT:-15432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.4.11-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-16379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    <<: *api-image
+    command: ["alembic", "upgrade", "head"]
+    environment: *api-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *api-image
+    environment: *api-env
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # Readiness, not liveness: compose dependants should wait until the API can serve.
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=2).status == 200 else 1)"]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 6
+    read_only: true
+    tmpfs: ["/tmp"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+
+volumes:
+  pgdata:
+  redisdata:

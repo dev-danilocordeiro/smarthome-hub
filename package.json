@@ -1,0 +1,11 @@
+{
+  "name": "smarthome-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/contracts"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}

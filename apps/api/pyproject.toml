@@ -1,0 +1,68 @@
+[project]
+name = "smarthome-api"
+version = "0.1.0"
+description = "Smart home hub: modular monolith exposing the HTTP API (and reused by ingestor and worker)."
+requires-python = ">=3.12,<3.15"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "sqlalchemy[asyncio]>=2.0.36",
+  "asyncpg>=0.30",
+  "alembic>=1.14",
+  "redis>=5.2",
+  "structlog>=24.4",
+  "device-protocol",
+]
+
+[tool.poetry]
+packages = [{ include = "smarthome", from = "src" }]
+
+[tool.poetry.dependencies]
+device-protocol = { path = "../../packages/device-protocol", develop = true }
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.3"
+pytest-asyncio = ">=0.24"
+httpx = ">=0.28"
+asgi-lifespan = ">=2.1"
+testcontainers = { version = ">=4.9", extras = ["postgres", "redis"] }
+hypothesis = ">=6.120"
+ruff = ">=0.8"
+mypy = ">=1.13"
+import-linter = ">=2.1"
+pip-audit = ">=2.7"
+
+[build-system]
+requires = ["poetry-core>=2.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+extend = "../../ruff.toml"
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+mypy_path = "src"
+files = ["src", "tests", "migrations"]
+explicit_package_bases = true
+plugins = ["pydantic.mypy"]
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["testcontainers.*"]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = ["error"]

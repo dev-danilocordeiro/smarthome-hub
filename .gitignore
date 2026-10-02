@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node
+node_modules/
+apps/web/dist/
+*.tsbuildinfo
+coverage/
+
+# Env and secrets
+.env
+*.pem
+*.key
+*.crt
+infra/mqtt/certs/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store

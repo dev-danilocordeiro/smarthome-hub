@@ -1,0 +1,76 @@
+name: backend
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "apps/api/**"
+      - "apps/ingestor/**"
+      - "apps/worker/**"
+      - "apps/simulator/**"
+      - "packages/device-protocol/**"
+      - "scripts/**"
+      - "ruff.toml"
+      - ".github/workflows/backend.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  static:
+    name: lint, types, module boundaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pipx install "poetry>=2.2,<3"
+      - name: Install every Python app
+        run: |
+          for app in apps/api apps/ingestor apps/worker apps/simulator; do
+            (cd "$app" && poetry install --no-interaction)
+          done
+      - name: Ruff
+        run: |
+          apps/api/.venv/bin/ruff format --check .
+          apps/api/.venv/bin/ruff check --output-format=github .
+      - name: Import contracts
+        run: |
+          python scripts/gen_import_contracts.py --check
+          cd apps/api && poetry run lint-imports
+      - name: mypy --strict
+        run: |
+          for app in apps/api apps/ingestor apps/worker apps/simulator; do
+            (cd "$app" && poetry run mypy)
+          done
+
+  test:
+    name: tests (unit, architecture, integration)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pipx install "poetry>=2.2,<3"
+      - run: cd apps/api && poetry install --no-interaction
+      - name: Unit and architecture tests
+        run: cd apps/api && poetry run pytest tests/unit tests/architecture
+      - name: Integration tests (Testcontainers)
+        run: cd apps/api && poetry run pytest tests/integration
+
+  image:
+    name: API image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f apps/api/Dockerfile -t smarthome-api:ci .

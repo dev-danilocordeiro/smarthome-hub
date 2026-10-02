@@ -1,0 +1,34 @@
+name: web
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/contracts/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/web.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run -w apps/web typecheck
+      - run: npm run -w apps/web lint
+      - run: npm run -w apps/web test
+      - run: npm run -w apps/web build

@@ -1,0 +1,32 @@
+[project]
+name = "smarthome-simulator"
+version = "0.1.0"
+description = "Simulates homes and devices speaking the device protocol over MQTT. Never imports the hub."
+requires-python = ">=3.12,<3.15"
+dependencies = ["device-protocol"]
+
+[project.scripts]
+smarthome-simulator = "smarthome_simulator.__main__:main"
+
+[tool.poetry]
+packages = [{ include = "smarthome_simulator", from = "src" }]
+
+[tool.poetry.dependencies]
+device-protocol = { path = "../../packages/device-protocol", develop = true }
+
+[tool.poetry.group.dev.dependencies]
+ruff = ">=0.8"
+mypy = ">=1.13"
+
+[build-system]
+requires = ["poetry-core>=2.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+extend = "../../ruff.toml"
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+mypy_path = "src"
+packages = ["smarthome_simulator"]

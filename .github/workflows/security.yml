@@ -1,0 +1,56 @@
+name: security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+env:
+  TRIVY_IMAGE: aquasec/trivy:0.75.0
+
+jobs:
+  python-deps:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pipx install "poetry>=2.2,<3"
+      - run: cd apps/api && poetry install --no-interaction
+      # Our own packages are installed editable and are not on PyPI; skip them
+      # (--strict would turn that skip into a failure).
+      - run: cd apps/api && poetry run pip-audit --skip-editable
+
+  node-deps:
+    name: npm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm audit --audit-level=high
+
+  trivy:
+    name: trivy (filesystem + API image)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan repository (deps, IaC misconfig, secrets)
+        run: >
+          docker run --rm -v "$PWD:/src" -w /src "$TRIVY_IMAGE"
+          fs --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --exit-code 1
+          --skip-dirs node_modules .
+      - run: docker build -f apps/api/Dockerfile -t smarthome-api:ci .
+      - name: Scan API image
+        run: >
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE"
+          image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 smarthome-api:ci

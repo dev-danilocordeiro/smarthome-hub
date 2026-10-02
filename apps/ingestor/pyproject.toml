@@ -1,0 +1,35 @@
+[project]
+name = "smarthome-ingestor"
+version = "0.1.0"
+description = "Ingestion entrypoint: consumes MQTT and writes telemetry, reusing the monolith modules."
+requires-python = ">=3.12,<3.15"
+dependencies = ["smarthome-api", "device-protocol"]
+
+[project.scripts]
+smarthome-ingestor = "smarthome_ingestor.__main__:main"
+
+[tool.poetry]
+packages = [{ include = "smarthome_ingestor", from = "src" }]
+
+[tool.poetry.dependencies]
+# Poetry does not resolve path dependencies transitively, so the API's own path dependency
+# is repeated here.
+smarthome-api = { path = "../api", develop = true }
+device-protocol = { path = "../../packages/device-protocol", develop = true }
+
+[tool.poetry.group.dev.dependencies]
+ruff = ">=0.8"
+mypy = ">=1.13"
+
+[build-system]
+requires = ["poetry-core>=2.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+extend = "../../ruff.toml"
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+mypy_path = "src"
+packages = ["smarthome_ingestor"]

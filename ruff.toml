@@ -1,0 +1,31 @@
+# Shared by every Python project in the monorepo.
+target-version = "py312"
+line-length = 100
+
+[lint]
+select = [
+  "E", "W", "F", "I", "N", "UP", "B", "BLE", "A", "C4", "SIM", "RUF",
+  "ASYNC", "S", "PT", "RET", "TID", "TC", "PL", "PERF",
+]
+ignore = [
+  "PLR0913",  # FastAPI dependency signatures legitimately take many params
+]
+
+[lint.per-file-ignores]
+"**/tests/**" = ["S101", "PLR2004", "S603", "S607"]
+"**/migrations/**" = ["N999"]
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[lint.flake8-type-checking]
+runtime-evaluated-base-classes = ["pydantic.BaseModel", "pydantic_settings.BaseSettings"]
+
+[format]
+quote-style = "double"
+
+[lint.isort]
+# Path dependencies between apps are still "our" code; group them together everywhere.
+known-first-party = [
+  "smarthome", "smarthome_ingestor", "smarthome_worker", "smarthome_simulator", "device_protocol",
+]
