@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from device_protocol import InvalidMessage, MessageKind, decode
+from device_protocol import STATE_PROPERTIES, InvalidMessage, MessageKind, decode
 from smarthome_simulator.catalog import APPLIANCES, CATALOG, INITIAL_STATE, DeviceType
 from smarthome_simulator.environment import HomeEnvironment
 
@@ -168,7 +168,7 @@ class SimulatedDevice:
             status, reason = "expired", "received after expires_at"
         elif command["action"] == "set_state":
             desired: dict[str, Any] = command["desired"]
-            unsupported = set(desired) - self.spec.state_properties
+            unsupported = set(desired) - STATE_PROPERTIES[self.kind]
             if unsupported:
                 status, reason = "rejected", f"unsupported properties: {sorted(unsupported)}"
             else:
