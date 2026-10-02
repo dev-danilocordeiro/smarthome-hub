@@ -117,7 +117,11 @@ state messages by `ts`.
      command is redelivered;
   2. answer `expired` instead of executing when it receives the command after
      `expires_at`;
-  3. answer `rejected` when `desired` names properties it does not have.
+  3. answer `rejected` when `desired` names properties it does not have;
+  4. answer `rejected` with reason `superseded by a newer command` when a `set_state`
+     was issued (`issued_at`) before the last `set_state` it applied. The hub delivers at
+     least once and may deliver two commands out of order (ADR 0009); this keeps an
+     older command from undoing a newer one.
 
 ### commands/ack
 
@@ -152,6 +156,9 @@ reconnect. Expired ones are then answered with `expired`.
 
 ## Trace context
 
-From phase 7, commands carry W3C `traceparent` / `tracestate` as MQTT 5 user
-properties, and devices copy them onto their acks. That lets one trace cover
-click → API → broker → device → ack. Payloads stay free of tracing fields.
+Commands carry W3C `traceparent` (and `tracestate`, when set) as MQTT 5 user
+properties. A device should continue that trace while it handles the command and send
+its own context the same way on every ack; a device without a tracer simply copies the
+received properties onto its acks. Either way one trace covers
+click → API → outbox relay → broker → device → ack (ADR 0009). Payloads stay free of
+tracing fields.

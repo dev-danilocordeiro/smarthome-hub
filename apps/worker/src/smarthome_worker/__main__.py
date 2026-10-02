@@ -26,7 +26,7 @@ from smarthome.shared.infrastructure.mqtt_publisher import MqttPublisher, Publis
 from smarthome.shared.infrastructure.outbox import OutboxRelay
 from smarthome.shared.infrastructure.redis import create_redis
 from smarthome.shared.logging import configure_logging
-from smarthome.shared.observability import configure_providers, instrument_engine
+from smarthome.shared.observability import configure_providers
 
 log = structlog.get_logger(__name__)
 
@@ -55,7 +55,6 @@ async def heartbeat() -> None:
 async def run(settings: Settings) -> None:
     engine = create_engine(settings)
     redis = create_redis(settings)
-    instrument_engine(engine)
     clock = SystemClock()
     publisher = MqttPublisher(
         PublisherConfig(

@@ -32,20 +32,26 @@ relay_lag = meter.create_histogram(
     unit="s",
     description="Time from commit to publication at the broker.",
 )
-# Last count seen by a relay in this process; reported by the gauge below.
-_backlog = [0]
+# Last count seen by a relay in this process. The gauge is registered by the first relay
+# created, so processes that only write to the outbox (api, ingestor) do not report it.
+_backlog: list[int] = []
 
 
 def _observe_backlog(_: CallbackOptions) -> list[Observation]:
     return [Observation(_backlog[0])]
 
 
-meter.create_observable_gauge(
-    "smarthome.outbox.backlog",
-    callbacks=[_observe_backlog],
-    unit="{message}",
-    description="Outbox messages waiting to be published.",
-)
+def _report_backlog() -> None:
+    if _backlog:
+        return
+    _backlog.append(0)
+    meter.create_observable_gauge(
+        "smarthome.outbox.backlog",
+        callbacks=[_observe_backlog],
+        unit="{message}",
+        description="Outbox messages waiting to be published.",
+    )
+
 
 NOTIFY_CHANNEL = "outbox"
 MAX_RETRY_DELAY_S = 60
@@ -142,6 +148,7 @@ class OutboxRelay:
         self._poll_interval_s = poll_interval_s
         self._notifications = listen
         self._wake = asyncio.Event()
+        _report_backlog()
 
     async def run(self, stop: asyncio.Event) -> None:
         listener = asyncio.create_task(self._listen_loop(stop)) if self._notifications else None

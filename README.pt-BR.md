@@ -5,7 +5,7 @@ eventos, telemetria em tempo real, séries temporais, segurança de dispositivos
 observabilidade**. Não precisa de hardware: um simulador fala o mesmo protocolo MQTT que um
 ESP32 real falaria.
 
-> **Status:** fase 6 de 11 (telemetria). A documentação completa está no [README em inglês](README.md).
+> **Status:** fase 7 de 11 (comandos). A documentação completa está no [README em inglês](README.md).
 
 ## Arquitetura
 
@@ -74,3 +74,13 @@ A telemetria entra em lote numa hypertable do TimescaleDB, com agregados contín
 aplica backpressure e coloca em quarentena dispositivos que inundam o broker. O estado atual
 fica no Redis, o histórico no TimescaleDB e a configuração no Postgres
 ([ADR 0007](docs/adr/0007-telemetry-in-timescaledb.md), [ADR 0008](docs/adr/0008-current-state-history-configuration.md)).
+
+## Comandos
+
+`POST /homes/{casa}/devices/{dispositivo}/commands` responde `202` na hora: o comando e a
+mensagem MQTT são gravados na mesma transação (**transactional outbox**) e o `worker` publica
+depois do commit, acordado por `NOTIFY`. O dispositivo confirma via MQTT, o ingestor registra
+o resultado e comandos sem resposta até o prazo viram `timed_out` (uma resposta atrasada não
+muda isso). Fechaduras e câmeras exigem `operate_locks` e login feito nos últimos 5 minutos.
+Cada comando tem um `trace_id`: no Tempo, um único trace cobre API, worker, dispositivo e
+ingestor ([ADR 0009](docs/adr/0009-commands-outbox-and-trace-propagation.md)).
