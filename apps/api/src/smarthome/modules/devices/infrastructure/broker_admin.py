@@ -7,6 +7,7 @@ each one carries `correlationData` so its response can be matched.
 """
 
 import asyncio
+import contextlib
 import json
 import secrets
 import ssl
@@ -118,6 +119,45 @@ class BrokerAdmin:
                 },
             ]
         )
+
+    async def ensure_service_account(
+        self, *, username: str, password: str, acls: list[dict[str, Any]]
+    ) -> None:
+        """Create the account, or bring an existing one to exactly these ACLs and password
+        (so deploying a new ACL set or rotating the secret only takes a restart)."""
+        try:
+            await self.create_service_account(username=username, password=password, acls=acls)
+        except BrokerAdminError as exc:
+            if "already exists" not in str(exc):
+                raise
+            role = f"service:{username}"
+            current = await self._execute([{"command": "getRole", "rolename": role}])
+            existing = current[0].get("data", {}).get("role", {}).get("acls", [])
+            await self._execute(
+                [
+                    *(
+                        {
+                            "command": "removeRoleACL",
+                            "rolename": role,
+                            "acltype": a["acltype"],
+                            "topic": a["topic"],
+                        }
+                        for a in existing
+                    ),
+                    *({"command": "addRoleACL", "rolename": role, **acl} for acl in acls),
+                    {"command": "setClientPassword", "username": username, "password": password},
+                ]
+            )
+            # Re-link client and role. Mosquitto 2.1 keeps a dangling link if the role was
+            # ever deleted under the client, and then refuses addClientRole until the link
+            # is removed; removing a link that is fine is harmless.
+            with contextlib.suppress(BrokerAdminError):
+                await self._execute(
+                    [{"command": "removeClientRole", "username": username, "rolename": role}]
+                )
+            await self._execute(
+                [{"command": "addClientRole", "username": username, "rolename": role}]
+            )
 
     async def _execute(self, commands: list[dict[str, Any]]) -> list[dict[str, Any]]:
         tagged = [c | {"correlationData": secrets.token_hex(8)} for c in commands]

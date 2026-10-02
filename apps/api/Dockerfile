@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Build context: repository root (the API depends on packages/device-protocol).
+# Build context: repository root. Image for every hub entrypoint (api, ingestor, worker).
 
 ARG PYTHON_IMAGE=python:3.12-slim
 
@@ -21,11 +21,16 @@ COPY apps/api/pyproject.toml apps/api/poetry.lock apps/api/
 COPY packages/device-protocol/pyproject.toml packages/device-protocol/
 RUN cd apps/api && poetry install --only main --no-root --no-directory
 
-# Our own code, installed non-editable so the venv is self-contained.
+# Our own code, installed non-editable so the venv is self-contained. One image carries
+# every entrypoint over the same modules (ADR 0001): api, ingestor, worker.
 COPY packages/device-protocol packages/device-protocol
 COPY apps/api/src apps/api/src
 COPY apps/api/README.md* apps/api/
-RUN pip install --no-deps ./packages/device-protocol ./apps/api
+COPY apps/ingestor/pyproject.toml apps/ingestor/
+COPY apps/ingestor/src apps/ingestor/src
+COPY apps/worker/pyproject.toml apps/worker/
+COPY apps/worker/src apps/worker/src
+RUN pip install --no-deps ./packages/device-protocol ./apps/api ./apps/ingestor ./apps/worker
 
 
 FROM ${PYTHON_IMAGE} AS runtime

@@ -1,6 +1,9 @@
 """Public interface of the `devices` module.
 
-The only import path other modules may use. Everything else in this package is private.
+Other modules and the ingestor use these names only.
 """
 
-__all__: list[str] = []
+from smarthome.modules.devices.application.services import DevicesService, DeviceView
+from smarthome.modules.devices.domain.model import Device, DeviceStatus, Twin
+
+__all__ = ["Device", "DeviceStatus", "DeviceView", "DevicesService", "Twin"]

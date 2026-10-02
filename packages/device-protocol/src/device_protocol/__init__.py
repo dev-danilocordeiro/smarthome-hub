@@ -3,6 +3,7 @@
 Shared by the hub, the simulator and real firmware. See docs/device-protocol.md.
 """
 
+from device_protocol.kinds import CRITICAL_KINDS, STATE_PROPERTIES, DeviceKind
 from device_protocol.messages import (
     MAX_PAYLOAD_BYTES,
     SCHEMA_VERSION,
@@ -30,12 +31,15 @@ from device_protocol.topics import (
 PROTOCOL_VERSION = "1"
 
 __all__ = [
+    "CRITICAL_KINDS",
     "DELIVERY",
     "MAX_PAYLOAD_BYTES",
     "PROTOCOL_VERSION",
     "SCHEMA_VERSION",
+    "STATE_PROPERTIES",
     "TOPIC_VERSION",
     "Delivery",
+    "DeviceKind",
     "DeviceTopic",
     "InvalidMessage",
     "InvalidTopic",

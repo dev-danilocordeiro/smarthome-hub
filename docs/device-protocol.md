@@ -18,6 +18,29 @@ explains it; if the two ever disagree, the package wins and this page is a bug.
 - Keep-alive is 30 s for the simulator (max 300 s at the broker). The maximum packet is
   64 KiB, and the hub additionally rejects payloads over 8 KiB.
 
+## Pairing
+
+A device starts with nothing but the hub's URL and a pairing code a resident gives it:
+
+```http
+POST /provisioning/claim
+{"code": "K7Q4-M2XD", "kind": "plug", "firmware": "1.4.2"}
+
+201 Created
+{"device_id": "plug-8f2c1a9d0b3e", "home_id": "…",
+ "mqtt": {"host": "…", "port": 8883, "tls": true, "username": "plug-8f2c1a9d0b3e",
+          "client_id": "plug-8f2c1a9d0b3e", "password": "…"},
+ "topics": {"telemetry": "v1/homes/…/telemetry", "command": "v1/homes/…/commands", …}}
+```
+
+- The code is case- and dash-insensitive, and look-alike letters are accepted.
+- It is valid for 10 minutes and works once.
+- An unknown, expired or used code gets `410`; too many attempts get `429` with
+  `Retry-After`.
+- The password is returned only in this response, so the device must store it.
+
+See [ADR 0006](adr/0006-device-provisioning-credentials-and-twin.md).
+
 ## Topics
 
 ```
@@ -76,7 +99,9 @@ Every payload is a JSON object with `"schema_version": "1"` and no unknown field
 ```
 
 This is the `reported` side of the digital twin. A device sends it on connect and
-whenever its state changes, whether by command or locally.
+whenever its state changes, whether by command or locally. `reported` may only contain
+the properties of the device's kind (`device_protocol.STATE_PROPERTIES`); the hub orders
+state messages by `ts`.
 
 ### commands
 

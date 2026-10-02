@@ -132,3 +132,11 @@ def test_a_command_other_than_set_state_must_not_carry_a_desired_state() -> None
 def test_garbage_and_oversized_payloads_never_reach_schema_validation(raw: bytes) -> None:
     with pytest.raises(InvalidMessage):
         decode(MessageKind.TELEMETRY, raw)
+
+
+def test_every_state_property_a_device_kind_exposes_is_defined_by_the_state_schema() -> None:
+    from device_protocol import STATE_PROPERTIES, DeviceKind  # noqa: PLC0415
+
+    defined = set(schema("common")["$defs"]["device_state"]["properties"])
+    assert set(STATE_PROPERTIES) == set(DeviceKind)
+    assert set().union(*STATE_PROPERTIES.values()) <= defined
