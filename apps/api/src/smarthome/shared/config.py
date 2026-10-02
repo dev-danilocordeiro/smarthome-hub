@@ -78,6 +78,18 @@ class Settings(BaseSettings):
     # principle); raised in development so a simulated fleet can pair in one go.
     claim_rate_per_minute: int = Field(default=10, ge=1)
 
+    # Telemetry ingestion (ADR 0007).
+    telemetry_batch_rows: int = Field(default=500, ge=1)
+    telemetry_flush_interval_ms: int = Field(default=1000, ge=50)
+    telemetry_buffer_max_rows: int = Field(default=20_000, ge=1)
+    # Messages per device per minute before it is quarantined. The busiest simulated
+    # device (energy meter) sends 12/min.
+    telemetry_max_messages_per_minute: int = Field(default=120, ge=1)
+    telemetry_raw_retention_days: int = Field(default=30, ge=8)  # > columnstore delay (7d)
+    telemetry_1m_retention_days: int = Field(default=90, ge=1)
+    telemetry_1h_retention_days: int = Field(default=730, ge=1)
+    telemetry_history_cache_s: int = Field(default=10, ge=0)
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
