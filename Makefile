@@ -115,7 +115,7 @@ typecheck: ## mypy --strict on every Python app, tsc on the web app
 	npm run -w apps/web typecheck
 
 .PHONY: check-infra
-check-infra: .env ## Validate compose, collector, Prometheus, Tempo, Loki and dashboard configs
+check-infra: .env ## Validate compose, collector, Prometheus, Tempo, Loki, dashboards and CI workflows
 	$(COMPOSE) config --quiet
 	docker run --rm -v $(CURDIR)/infra/otel-collector/config.yaml:/c.yaml:ro \
 	  $(call image,otel-collector) validate --config=/c.yaml
@@ -126,6 +126,7 @@ check-infra: .env ## Validate compose, collector, Prometheus, Tempo, Loki and da
 	docker run --rm -v $(CURDIR)/infra/loki/loki.yaml:/l.yaml:ro \
 	  $(call image,loki) -config.file=/l.yaml -verify-config
 	python3 scripts/check_dashboards.py
+	docker run --rm -v $(CURDIR):/repo -w /repo rhysd/actionlint:1.7.12 -color=false
 
 .PHONY: check
 check: lint typecheck ## Every static gate CI runs (plus check-infra, which needs Docker)

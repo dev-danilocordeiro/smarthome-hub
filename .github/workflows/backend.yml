@@ -72,7 +72,7 @@ jobs:
           (cd apps/api && poetry run pytest tests/unit tests/architecture)
           (cd packages/device-protocol && poetry run pytest)
           (cd apps/simulator && poetry run pytest)
-      - name: Integration tests (Testcontainers: TimescaleDB, Redis, Keycloak, Mosquitto)
+      - name: "Integration tests (Testcontainers: TimescaleDB, Redis, Keycloak, Mosquitto)"
         run: cd apps/api && poetry run pytest tests/integration
 
   image:
