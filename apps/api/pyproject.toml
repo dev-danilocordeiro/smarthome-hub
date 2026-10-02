@@ -76,4 +76,10 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 addopts = "-ra --strict-markers --strict-config"
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    # MQTT clients the broker refuses or kicks (on purpose, in the integration tests) leave
+    # their TLS socket to paho, which never closes it. When the GC reaps it depends on the
+    # interpreter, so the warning would fail whichever test (or session teardown) is running.
+    "ignore:unclosed <ssl.SSLSocket:ResourceWarning",
+]

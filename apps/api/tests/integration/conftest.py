@@ -54,19 +54,6 @@ def in_memory_telemetry(
     """Install in-memory providers before any app is built, as an entrypoint would."""
 
 
-# Clients the broker refuses or kicks (on purpose, in the security tests) leave their TLS
-# socket to paho, which never closes it. When the GC finally reaps it is up to the
-# interpreter, so the ResourceWarning would fail whichever test happens to be running.
-_LEAKED_MQTT_SOCKETS = pytest.mark.filterwarnings("ignore:unclosed <ssl.SSLSocket:ResourceWarning")
-
-
-def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-    here = Path(__file__).parent
-    for item in items:
-        if item.path.is_relative_to(here):
-            item.add_marker(_LEAKED_MQTT_SOCKETS)
-
-
 @pytest.fixture(scope="session")
 def postgres() -> Iterator[PostgresContainer]:
     with PostgresContainer(TIMESCALE_IMAGE, driver="asyncpg") as container:
