@@ -15,11 +15,15 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from pydantic import PostgresDsn, RedisDsn
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncEngine
 from testcontainers.community.postgres import PostgresContainer
 from testcontainers.community.redis import RedisContainer
 
 from smarthome.main import create_app
 from smarthome.shared.config import Environment, Settings
+from smarthome.shared.infrastructure.db import create_engine
+from smarthome.shared.infrastructure.redis import create_redis
 
 # Keep in sync with infra/docker-compose.yml.
 TIMESCALE_IMAGE = "timescale/timescaledb:2.30.2-pg16"
@@ -84,11 +88,27 @@ def migrated_database(settings: Settings, api_root: Path) -> Settings:
     return settings
 
 
-async def client_for(settings: Settings) -> AsyncIterator[httpx.AsyncClient]:
+@pytest.fixture
+async def engine(migrated_database: Settings) -> AsyncIterator[AsyncEngine]:
+    engine = create_engine(migrated_database)
+    yield engine
+    await engine.dispose()
+
+
+@pytest.fixture
+async def redis(migrated_database: Settings) -> AsyncIterator[Redis]:
+    client = create_redis(migrated_database)
+    yield client
+    await client.aclose()
+
+
+async def client_for(
+    settings: Settings, *, base_url: str = "http://api"
+) -> AsyncIterator[httpx.AsyncClient]:
     app = create_app(settings)
     async with LifespanManager(app) as manager:
         transport = httpx.ASGITransport(app=manager.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://api") as client:
+        async with httpx.AsyncClient(transport=transport, base_url=base_url) as client:
             yield client
 
 

@@ -9,10 +9,11 @@ select = [
 ]
 ignore = [
   "PLR0913",  # FastAPI dependency signatures legitimately take many params
+  "N818",     # domain exceptions are named for what happened (LastOwner), not "...Error"
 ]
 
 [lint.per-file-ignores]
-"**/tests/**" = ["S101", "PLR2004", "S603", "S607"]
+"**/tests/**" = ["S101", "S105", "S106", "PLR2004", "S603", "S607"]  # fixtures hold fake secrets
 "**/migrations/**" = ["N999"]
 
 [lint.flake8-tidy-imports]

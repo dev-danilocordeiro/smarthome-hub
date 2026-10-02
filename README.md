@@ -4,7 +4,7 @@ A multi-tenant smart home hub built to show **event-driven design, real-time
 telemetry, time-series storage, device security and observability**. Real hardware
 is optional: a simulator speaks the same MQTT protocol a real ESP32 would.
 
-> **Status:** phase 2 of 11 (observability). Most of the product below is still on the roadmap.
+> **Status:** phase 3 of 11 (identity and auth). Most of the product below is still on the roadmap.
 > [Versão em português](README.pt-BR.md).
 
 ## What it will do
@@ -65,6 +65,7 @@ make down
 | PostgreSQL | `localhost:15432`              | TimescaleDB 2.30, credentials in `.env`        |
 | Redis      | `localhost:16379`              |                                                |
 | Web (dev)  | http://localhost:5173          | `make web-dev`, not containerised yet          |
+| Keycloak   | http://localhost:8080          | realm `smarthome`; admin password in `.env`    |
 | Grafana    | http://localhost:3000          | anonymous viewer; admin password in `.env`     |
 | Prometheus | http://localhost:9090          | OTLP receiver + exemplar storage               |
 | Tempo      | http://localhost:3200          | traces; metrics-generator → Prometheus         |
@@ -73,6 +74,22 @@ make down
 
 Host ports are offset from the defaults so the stack can run next to other local projects.
 Override them in `.env`.
+
+## Sign in
+
+```bash
+make up && make web-dev      # the web app proxies /api to the BFF
+```
+
+Open http://localhost:5173 and sign in. Dev users (password `smarthome-dev-1`):
+`alice`, `bob`, `carol`, `dave`. Any of them can create a home and invite the others
+as resident, guest (with expiry and device scope) or viewer.
+
+How it works: the API is a **backend-for-frontend**. The browser only ever holds an
+`HttpOnly; Secure; SameSite=Strict` session cookie, tokens stay server-side, refresh
+tokens rotate, and unsafe requests need a CSRF token ([ADR 0003](docs/adr/0003-bff-sessions-and-csrf.md)).
+Homes are tenants with per-home roles and a hash-chained, append-only audit log
+([ADR 0004](docs/adr/0004-tenancy-roles-and-audit-log.md)).
 
 ## Tour: follow one request through every signal
 
@@ -128,7 +145,7 @@ scripts/        repo tooling (import contract generator)
 
 1. ✅ Foundation: monorepo, CI, compose, module boundaries
 2. ✅ Observability: OTel Collector, Prometheus, Grafana, Tempo, Loki
-3. Identity and auth: Keycloak, BFF, roles, guests, audit log
+3. ✅ Identity and auth: Keycloak, BFF, roles, guests, audit log
 4. Device protocol and MQTT broker with TLS and ACLs, basic simulator
 5. Devices and provisioning: pairing, credentials, twin, LWT
 6. Telemetry: batched ingestion, hypertables, continuous aggregates

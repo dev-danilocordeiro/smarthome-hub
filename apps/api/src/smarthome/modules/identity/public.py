@@ -1,6 +1,28 @@
 """Public interface of the `identity` module.
 
-The only import path other modules may use. Everything else in this package is private.
+Other modules authenticate and authorize through these names only:
+
+    CanControl = Depends(require_home_access(Permission.CONTROL_DEVICES))
+
+    @router.post("/homes/{home_id}/devices/{device_id}/commands")
+    async def send(access: Annotated[HomeAccess, CanControl]): ...
 """
 
-__all__: list[str] = []
+from smarthome.modules.identity.api.dependencies import (
+    CurrentPrincipal,
+    require_home_access,
+)
+from smarthome.modules.identity.application.services import HomeAccess
+from smarthome.modules.identity.domain.model import HomeId, Permission, Role, UserId
+from smarthome.modules.identity.domain.principal import Principal
+
+__all__ = [
+    "CurrentPrincipal",
+    "HomeAccess",
+    "HomeId",
+    "Permission",
+    "Principal",
+    "Role",
+    "UserId",
+    "require_home_access",
+]

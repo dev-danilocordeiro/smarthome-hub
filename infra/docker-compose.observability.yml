@@ -17,6 +17,12 @@ services:
       otel-collector:
         condition: service_started
 
+  keycloak:
+    environment:
+      KC_TRACING_ENABLED: "true"
+      KC_TRACING_ENDPOINT: http://otel-collector:4317
+      KC_TRACING_SERVICE_NAME: keycloak
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.161.0
     command: ["--config=/etc/otelcol/config.yaml"]
