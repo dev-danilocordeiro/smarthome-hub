@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.algorithms import RSAAlgorithm
 
 from smarthome.modules.identity.infrastructure.oidc import (
+    JWKS_MIN_REFRESH_INTERVAL,
     InvalidIdToken,
     OidcClient,
     OidcError,
@@ -189,7 +190,10 @@ async def test_a_rotated_signing_key_is_picked_up_once_the_cache_is_old_enough(
     with pytest.raises(InvalidIdToken):  # within the refetch rate limit
         await client.validate_id_token(token, nonce="n-1")
 
-    monkeypatch.setattr(client, "_jwks_fetched_at", 0.0)
+    # Age the cache relative to the monotonic clock (which starts near 0 on a fresh CI VM).
+    monkeypatch.setattr(
+        client, "_jwks_fetched_at", time.monotonic() - JWKS_MIN_REFRESH_INTERVAL - 1
+    )
     claims = await client.validate_id_token(token, nonce="n-1")
     assert claims.subject == "user-1"
     assert provider.jwks_fetches == 2

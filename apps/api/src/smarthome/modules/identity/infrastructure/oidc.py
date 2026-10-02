@@ -98,7 +98,7 @@ class OidcClient:
         self._clock = clock
         self._metadata: ProviderMetadata | None = None
         self._jwks: jwt.PyJWKSet | None = None
-        self._jwks_fetched_at = 0.0
+        self._jwks_fetched_at = float("-inf")
         self._lock = asyncio.Lock()
 
     @property
