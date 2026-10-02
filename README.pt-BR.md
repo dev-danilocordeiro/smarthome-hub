@@ -5,7 +5,7 @@ eventos, telemetria em tempo real, séries temporais, segurança de dispositivos
 observabilidade**. Não precisa de hardware: um simulador fala o mesmo protocolo MQTT que um
 ESP32 real falaria.
 
-> **Status:** fase 5 de 11 (dispositivos e provisionamento). A documentação completa está no [README em inglês](README.md).
+> **Status:** fase 6 de 11 (telemetria). A documentação completa está no [README em inglês](README.md).
 
 ## Arquitetura
 
@@ -66,3 +66,11 @@ dispositivo. Cada dispositivo simulado se pareia sozinho via HTTP (`POST /provis
 como um ESP32 real faria, e recebe credenciais próprias no broker. O ingestor mantém presença
 (inclusive via Last Will) e o twin (desired/reported) de cada dispositivo.
 Detalhes no [ADR 0006](docs/adr/0006-device-provisioning-credentials-and-twin.md).
+
+## Telemetria
+
+A telemetria entra em lote numa hypertable do TimescaleDB, com agregados contínuos de 1 minuto,
+1 hora e 1 dia, compressão após 7 dias e retenção configurável. O ingestor deduplica mensagens,
+aplica backpressure e coloca em quarentena dispositivos que inundam o broker. O estado atual
+fica no Redis, o histórico no TimescaleDB e a configuração no Postgres
+([ADR 0007](docs/adr/0007-telemetry-in-timescaledb.md), [ADR 0008](docs/adr/0008-current-state-history-configuration.md)).

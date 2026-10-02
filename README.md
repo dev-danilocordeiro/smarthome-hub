@@ -4,7 +4,7 @@ A multi-tenant smart home hub built to show **event-driven design, real-time
 telemetry, time-series storage, device security and observability**. Real hardware
 is optional: a simulator speaks the same MQTT protocol a real ESP32 would.
 
-> **Status:** phase 5 of 11 (devices and provisioning). Most of the product below is still on the roadmap.
+> **Status:** phase 6 of 11 (telemetry). Most of the product below is still on the roadmap.
 > [Versão em português](README.pt-BR.md).
 
 ## What it will do
@@ -108,6 +108,17 @@ broker credentials. Sign in as alice to see them; `GET /homes/{id}/devices` show
 presence (fed by the ingestor and the devices' Last Will) and each device's twin
 ([ADR 0006](docs/adr/0006-device-provisioning-credentials-and-twin.md)).
 
+Telemetry is batched into a TimescaleDB hypertable with 1-minute, 1-hour and 1-day
+continuous aggregates ([ADR 0007](docs/adr/0007-telemetry-in-timescaledb.md)):
+
+```http
+GET /homes/{home}/devices/{device}/telemetry?metric=power_w&from=2026-10-01T00:00:00Z
+GET /homes/{home}/devices/{device}/readings/latest      # from Redis, never Timescale
+```
+
+Current state lives in Redis, history in TimescaleDB, configuration in Postgres
+([ADR 0008](docs/adr/0008-current-state-history-configuration.md)).
+
 Devices speak [protocol v1](docs/device-protocol.md) over MQTT 5 + TLS, each with its own
 credentials and an ACL limited to its own topics ([ADR 0005](docs/adr/0005-mqtt-broker-and-qos.md)).
 The simulator models a day in each home: outdoor temperature, sunlight, residents coming
@@ -172,7 +183,7 @@ scripts/        repo tooling (import contract generator)
 3. ✅ Identity and auth: Keycloak, BFF, roles, guests, audit log
 4. ✅ Device protocol and MQTT broker with TLS and ACLs, basic simulator
 5. ✅ Devices and provisioning: pairing, credentials, twin, LWT
-6. Telemetry: batched ingestion, hypertables, continuous aggregates
+6. ✅ Telemetry: batched ingestion, hypertables, continuous aggregates
 7. Commands: ack, timeout, idempotency, trace propagation over MQTT
 8. Automations: DSL, rule engine, scenes, schedules, dry run
 9. Frontend: live floor plan, automation editor, history, PWA

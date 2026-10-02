@@ -85,7 +85,7 @@ def upgrade() -> None:
                 FROM telemetry.{source}
                 GROUP BY 1, home_id, device_id, metric
                 WITH NO DATA
-                """
+                """  # noqa: S608 - names and widths are literals from the tuple above
             )
         for name, start, end, every in (
             ("readings_1m", "2 hours", "1 minute", "1 minute"),
