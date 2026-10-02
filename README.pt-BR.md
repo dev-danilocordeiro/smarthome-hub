@@ -5,7 +5,7 @@ eventos, telemetria em tempo real, séries temporais, segurança de dispositivos
 observabilidade**. Não precisa de hardware: um simulador fala o mesmo protocolo MQTT que um
 ESP32 real falaria.
 
-> **Status:** fase 2 de 11 (observabilidade). A documentação completa está no [README em inglês](README.md).
+> **Status:** fase 3 de 11 (identidade e autenticação). A documentação completa está no [README em inglês](README.md).
 
 ## Arquitetura
 
@@ -28,6 +28,7 @@ make check && make test              # gates estáticos e testes
 | PostgreSQL | `localhost:15432`        |
 | Redis      | `localhost:16379`        |
 | Web (dev)  | http://localhost:5173    |
+| Keycloak   | http://localhost:8080    |
 | Grafana    | http://localhost:3000    |
 | Prometheus | http://localhost:9090    |
 | Tempo      | http://localhost:3200    |
@@ -40,3 +41,11 @@ que distribui para Tempo, Prometheus e Loki. No Grafana, o dashboard **Service O
 liga métrica → trace (exemplars) → logs (por `trace_id`). Rode `make demo-traffic` e
 siga o tour no [README em inglês](README.md#tour-follow-one-request-through-every-signal).
 Detalhes no [ADR 0002](docs/adr/0002-observability-pipeline.md).
+
+## Login
+
+`make up && make web-dev`, depois abra http://localhost:5173. Usuários de desenvolvimento
+(senha `smarthome-dev-1`): `alice`, `bob`, `carol`, `dave`. A API funciona como BFF: o
+navegador só recebe um cookie de sessão `HttpOnly`/`SameSite=Strict`, os tokens ficam no
+servidor e as requisições de escrita exigem token CSRF. Detalhes nos ADRs
+[0003](docs/adr/0003-bff-sessions-and-csrf.md) e [0004](docs/adr/0004-tenancy-roles-and-audit-log.md).
