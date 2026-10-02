@@ -1,5 +1,6 @@
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta, timezone
+from typing import Any
 from uuid import uuid4
 
 from smarthome.shared.audit.model import AuditEntry, entry_hash, verify_chain
@@ -50,10 +51,7 @@ def test_deleting_an_entry_breaks_the_link_of_its_successor() -> None:
 
 def test_the_hash_does_not_depend_on_the_timezone_the_timestamp_was_written_in() -> None:
     brt = timezone(timedelta(hours=-3))
-    args = {"prev_hash": None, "tenant_id": TENANT, "actor": "a", "action": "x"}
+    args: dict[str, Any] = {"prev_hash": None, "tenant_id": TENANT, "actor": "a", "action": "x"}
     args |= {"target_type": "t", "target_id": "1", "details": {}}
 
-    assert entry_hash(occurred_at=T0, **args) == entry_hash(  # type: ignore[arg-type]
-        occurred_at=T0.astimezone(brt),
-        **args,  # type: ignore[arg-type]
-    )
+    assert entry_hash(occurred_at=T0, **args) == entry_hash(occurred_at=T0.astimezone(brt), **args)

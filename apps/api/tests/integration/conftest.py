@@ -102,11 +102,13 @@ async def redis(migrated_database: Settings) -> AsyncIterator[Redis]:
     await client.aclose()
 
 
-async def client_for(settings: Settings) -> AsyncIterator[httpx.AsyncClient]:
+async def client_for(
+    settings: Settings, *, base_url: str = "http://api"
+) -> AsyncIterator[httpx.AsyncClient]:
     app = create_app(settings)
     async with LifespanManager(app) as manager:
         transport = httpx.ASGITransport(app=manager.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://api") as client:
+        async with httpx.AsyncClient(transport=transport, base_url=base_url) as client:
             yield client
 
 
