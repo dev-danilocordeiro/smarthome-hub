@@ -1,0 +1,116 @@
+{
+  "realm": "smarthome",
+  "displayName": "Smart Home Hub",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "permanentLockout": false,
+  "passwordPolicy": "length(12) and notUsername and notEmail",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 43200,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "webAuthnPolicyPasswordlessRpEntityName": "Smart Home Hub",
+  "webAuthnPolicyPasswordlessRpId": "localhost",
+  "webAuthnPolicyPasswordlessUserVerificationRequirement": "required",
+  "webAuthnPolicyPasswordlessRequireResidentKey": "Yes",
+  "webAuthnPolicyPasswordlessPasskeysEnabled": true,
+  "clients": [
+    {
+      "clientId": "smarthome-bff",
+      "name": "Smart Home Hub (BFF)",
+      "description": "Confidential client used only by the API's backend-for-frontend.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dev-only-bff-secret-change-me",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": false,
+      "redirectUris": [
+        "http://localhost:5173/api/auth/callback"
+      ],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*",
+        "use.refresh.tokens": "true"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "email": "alice@smarthome.local",
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Owner",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "smarthome-dev-1",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "bob",
+      "email": "bob@smarthome.local",
+      "emailVerified": true,
+      "firstName": "Bob",
+      "lastName": "Resident",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "smarthome-dev-1",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "carol",
+      "email": "carol@smarthome.local",
+      "emailVerified": true,
+      "firstName": "Carol",
+      "lastName": "Guest",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "smarthome-dev-1",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "dave",
+      "email": "dave@smarthome.local",
+      "emailVerified": true,
+      "firstName": "Dave",
+      "lastName": "Viewer",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "smarthome-dev-1",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}
