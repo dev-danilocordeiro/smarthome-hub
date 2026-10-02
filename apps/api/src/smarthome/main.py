@@ -7,6 +7,7 @@ from fastapi import FastAPI
 
 from smarthome.modules.devices import wiring as devices
 from smarthome.modules.identity import wiring as identity
+from smarthome.modules.telemetry import wiring as telemetry
 from smarthome.shared.clock import SystemClock
 from smarthome.shared.config import Settings, get_settings
 from smarthome.shared.diagnostics.router import router as diagnostics_router
@@ -54,6 +55,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.devices = devices.build(
             resolved, engine=app.state.db_engine, redis=app.state.redis, clock=SystemClock()
         )
+        app.state.telemetry = telemetry.build(
+            resolved,
+            engine=app.state.db_engine,
+            redis=app.state.redis,
+            devices=app.state.devices.service,
+        )
         instrument_engine(app.state.db_engine)
         instrument_redis()
         if providers is not None:
@@ -79,6 +86,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health_router)
     identity.mount(app)
     devices.mount(app)
+    telemetry.mount(app)
     if resolved.diagnostics_enabled:
         app.include_router(diagnostics_router)
     instrument_app(app)

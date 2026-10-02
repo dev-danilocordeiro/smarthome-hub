@@ -1,12 +1,10 @@
 """Mosquitto from the project's own config and entrypoint, with freshly generated certs."""
 
 import asyncio
-import gc
 import os
 import ssl
 import subprocess
 import time
-import warnings
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -103,11 +101,6 @@ def broker(tmp_path_factory: pytest.TempPathFactory, repo_root: Path) -> Iterato
                 if time.monotonic() > deadline:
                     raise TimeoutError(container.get_logs()) from None
                 time.sleep(0.5)
-        # Failed handshakes while the broker was booting leak paho's TLS sockets; reap them
-        # here so their ResourceWarnings do not surface in whichever test runs next.
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", ResourceWarning)
-            gc.collect()
         yield broker
 
 

@@ -169,6 +169,11 @@ class DevicesService:
         assert twin is not None  # created with the device  # noqa: S101
         return DeviceView(device, twin)
 
+    async def is_active(self, home_id: UUID, device_id: str) -> bool:
+        async with self._uow() as uow:
+            device = await uow.devices.get(device_id)
+        return device is not None and device.home_id == home_id and device.accepts_traffic
+
     # --- Lifecycle --------------------------------------------------------------------
     # Broker first, database second: if the second step fails, the device has already
     # lost (or regained) access, which is the safe side for quarantine and revocation.

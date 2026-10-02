@@ -1,7 +1,8 @@
 """Composition root for the `ingestor` process (ADR 0001).
 
 Consumes device traffic from the broker and hands each message kind to the module that
-owns it. Same modules as the API, different entrypoint. Telemetry (phase 6) plugs in here.
+owns it: presence and state to `devices`, telemetry to `telemetry` (batched writes).
+Same modules as the API, different entrypoint.
 """
 
 import asyncio
@@ -12,6 +13,8 @@ import structlog
 
 from smarthome.modules.devices import wiring as devices
 from smarthome.modules.devices.api.mqtt import handlers as device_handlers
+from smarthome.modules.telemetry import wiring as telemetry
+from smarthome.modules.telemetry.api.mqtt import handlers as telemetry_handlers
 from smarthome.shared.clock import SystemClock
 from smarthome.shared.config import Settings, get_settings
 from smarthome.shared.infrastructure.db import create_engine
@@ -45,7 +48,11 @@ async def run(settings: Settings) -> None:
     instrument_redis()
     try:
         await ensure_hub_account(settings)
+        await telemetry.apply_configured_retention(settings, engine)
         service = devices.build_service(settings, engine=engine, redis=redis, clock=SystemClock())
+        ingest, buffer = telemetry.build_ingest(
+            settings, engine=engine, redis=redis, devices=service
+        )
         consumer = DeviceTrafficConsumer(
             ConsumerConfig(
                 host=settings.mqtt_host,
@@ -55,14 +62,22 @@ async def run(settings: Settings) -> None:
                 password=settings.mqtt_hub_password.get_secret_value(),
                 heartbeat_file=HEARTBEAT_FILE,
             ),
-            handlers=device_handlers(service),
+            handlers=device_handlers(service) | telemetry_handlers(ingest),
         )
         stop = asyncio.Event()
         loop = asyncio.get_running_loop()
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, stop.set)
         log.info("ingestor_started", broker=f"{settings.mqtt_host}:{settings.mqtt_port}")
-        await consumer.run(stop)
+        flush_stop = asyncio.Event()
+        flusher = asyncio.create_task(buffer.run(flush_stop))
+        try:
+            await consumer.run(stop)
+        finally:
+            # Stop consuming first, then drain what is buffered so a clean shutdown
+            # loses no telemetry.
+            flush_stop.set()
+            await flusher
     finally:
         await redis.aclose()
         await engine.dispose()

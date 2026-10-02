@@ -1,6 +1,6 @@
-"""Public interface of the `telemetry` module.
+"""Public interface of the `telemetry` module (energy and automations read through this)."""
 
-The only import path other modules may use. Everything else in this package is private.
-"""
+from smarthome.modules.telemetry.application.services import TelemetryQueries
+from smarthome.modules.telemetry.domain.model import Point, Resolution
 
-__all__: list[str] = []
+__all__ = ["Point", "Resolution", "TelemetryQueries"]
