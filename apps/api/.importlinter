@@ -42,12 +42,14 @@ forbidden_modules =
     smarthome.modules
 
 [importlinter:contract:entrypoints]
-name = Modules never import an entrypoint
+name = Modules never import an entrypoint or developer tooling
 type = forbidden
 source_modules =
     smarthome.modules
+    smarthome.shared
 forbidden_modules =
     smarthome.main
+    smarthome.devtools
 
 [importlinter:contract:boundary-automations]
 name = automations reaches other modules only through their public.py

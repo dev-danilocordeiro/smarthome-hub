@@ -63,6 +63,26 @@ api-dev: .env ## Run the API on the host with reload (needs postgres + redis up)
 demo-traffic: ## Generate mixed traffic for the dashboards (SECONDS=120 RPS=10)
 	python3 scripts/demo_traffic.py --seconds $${SECONDS:-120} --rps $${RPS:-10}
 
+# --- Simulator -----------------------------------------------------------------
+
+SIM_DIR   := .simulator
+SIM       := cd apps/simulator && poetry run python -m smarthome_simulator
+HOMES     ?= 3
+DEVICES   ?= 20
+SPEED     ?= 1
+FAULTS    ?= 1
+# Until device pairing exists (phase 5) the hub registers the plan straight in the broker.
+REGISTER  := set -a; source .env; set +a; cd apps/api && \
+	SMARTHOME_MQTT_CA_FILE=$(CURDIR)/infra/mqtt/certs/ca.crt \
+	SMARTHOME_MQTT_PORT=$${MQTT_TLS_PORT:-8883} poetry run python -m smarthome.devtools.fleet
+
+.PHONY: simulate
+simulate: .env certs ## Run 3 homes x 20 devices against the broker (HOMES, DEVICES, SPEED, FAULTS)
+	@mkdir -p $(SIM_DIR)
+	$(SIM) plan --homes $(HOMES) --devices-per-home $(DEVICES) > $(CURDIR)/$(SIM_DIR)/plan.json
+	$(REGISTER) register $(CURDIR)/$(SIM_DIR)/plan.json $(CURDIR)/$(SIM_DIR)/fleet.json
+	$(SIM) run $(CURDIR)/$(SIM_DIR)/fleet.json --speed $(SPEED) --fault-rate $(FAULTS)
+
 .PHONY: web-dev
 web-dev: ## Run the Vite dev server
 	npm run -w apps/web dev
