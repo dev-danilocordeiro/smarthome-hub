@@ -1,0 +1,109 @@
+# Observability stack. Layered on top of docker-compose.yml by the Makefile:
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.observability.yml ...
+# Without this file the API runs with OpenTelemetry disabled.
+
+x-wget-healthcheck: &wget-healthcheck
+  interval: 5s
+  timeout: 3s
+  retries: 30
+
+services:
+  api:
+    environment:
+      SMARTHOME_OTEL_ENABLED: "true"
+      SMARTHOME_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      SMARTHOME_OTEL_METRIC_EXPORT_INTERVAL_MS: "5000"
+    depends_on:
+      otel-collector:
+        condition: service_started
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.161.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./otel-collector/config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "${OTEL_GRPC_PORT:-4317}:4317"
+      - "${OTEL_HTTP_PORT:-4318}:4318"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      tempo:
+        condition: service_started
+      loki:
+        condition: service_started
+    # Distroless image: no shell for a healthcheck. Exporters retry until it is up.
+
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-otlp-receiver
+      - --web.enable-remote-write-receiver
+      - --enable-feature=exemplar-storage
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheusdata:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    healthcheck:
+      <<: *wget-healthcheck
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/ready"]
+
+  tempo:
+    image: grafana/tempo:3.0.0
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    user: "10001:10001"
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempodata:/var/tempo
+    ports:
+      - "${TEMPO_PORT:-3200}:3200"
+
+  loki:
+    image: grafana/loki:3.7.8
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ./loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - lokidata:/loki
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set in .env}
+      # Demo mode: anyone can look, only the admin can change anything.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_DEFAULT_THEME: system
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/service-overview.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      tempo:
+        condition: service_started
+      loki:
+        condition: service_started
+    healthcheck:
+      <<: *wget-healthcheck
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+
+volumes:
+  prometheusdata:
+  tempodata:
+  lokidata:
+  grafanadata:

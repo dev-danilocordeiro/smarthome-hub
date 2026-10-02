@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SMARTHOME_", extra="ignore", frozen=True)
 
     service_name: str = "smarthome-api"
+    service_version: str = "0.1.0"
     environment: Environment = Environment.LOCAL
     log_level: str = "INFO"
     log_json: bool = True
@@ -32,6 +33,17 @@ class Settings(BaseSettings):
     # Upper bound for each dependency probe in /health/ready. Keeps the endpoint
     # fast enough for orchestrator probes even when a dependency hangs.
     readiness_timeout_seconds: float = Field(default=2.0, gt=0)
+
+    # OpenTelemetry. Off by default so a bare process never blocks on a missing collector;
+    # infra/docker-compose.observability.yml turns it on.
+    otel_enabled: bool = False
+    otel_exporter_otlp_endpoint: str = "http://localhost:4317"
+    otel_exporter_otlp_insecure: bool = True
+    otel_traces_sample_ratio: float = Field(default=1.0, ge=0, le=1)
+    otel_metric_export_interval_ms: int = Field(default=10_000, ge=1_000)
+
+    # /diagnostics/* exists to exercise the telemetry pipeline. Never enable in production.
+    diagnostics_enabled: bool = False
 
 
 @lru_cache(maxsize=1)

@@ -4,7 +4,7 @@ A multi-tenant smart home hub built to show **event-driven design, real-time
 telemetry, time-series storage, device security and observability**. Real hardware
 is optional: a simulator speaks the same MQTT protocol a real ESP32 would.
 
-> **Status:** phase 1 of 11 (foundation). Most of the product below is still on the roadmap.
+> **Status:** phase 2 of 11 (observability). Most of the product below is still on the roadmap.
 > [Versão em português](README.pt-BR.md).
 
 ## What it will do
@@ -38,6 +38,11 @@ flowchart LR
   monolith --> protocol
   monolith --> pg[("PostgreSQL 16<br/>+ TimescaleDB")]
   monolith --> redis[("Redis 7")]
+  monolith -- OTLP --> otel["OTel Collector"]
+  otel --> prom[("Prometheus")]
+  otel --> tempo[("Tempo")]
+  otel --> loki[("Loki")]
+  prom & tempo & loki --> grafana["Grafana"]
 ```
 
 Module boundaries are enforced in CI by [import-linter](apps/api/.importlinter).
@@ -60,15 +65,43 @@ make down
 | PostgreSQL | `localhost:15432`              | TimescaleDB 2.30, credentials in `.env`        |
 | Redis      | `localhost:16379`              |                                                |
 | Web (dev)  | http://localhost:5173          | `make web-dev`, not containerised yet          |
+| Grafana    | http://localhost:3000          | anonymous viewer; admin password in `.env`     |
+| Prometheus | http://localhost:9090          | OTLP receiver + exemplar storage               |
+| Tempo      | http://localhost:3200          | traces; metrics-generator → Prometheus         |
+| Loki       | http://localhost:3100          | logs over native OTLP                          |
+| OTel Collector | `localhost:4317` (gRPC), `localhost:4318` (HTTP) | single entry point for telemetry |
 
 Host ports are offset from the defaults so the stack can run next to other local projects.
 Override them in `.env`.
+
+## Tour: follow one request through every signal
+
+```bash
+make up
+make demo-traffic            # 2 minutes of mixed traffic: fast, slow and failing requests
+curl -s localhost:8000/diagnostics/trace-demo   # returns the trace_id of this request
+```
+
+1. Open **Grafana → Smart Home → Service Overview** (http://localhost:3000). You will see
+   request rate, 5xx ratio, p50/p95/p99 latency, in-flight requests, the DB pool and
+   process CPU/memory.
+2. On *Latency percentiles*, hover a dot (an **exemplar**) and click **View trace**. Tempo
+   opens the exact request: `GET /diagnostics/trace-demo` → Redis `INCRBY` → Postgres
+   `SELECT` → `diagnostics.simulated_work`.
+3. In the trace view, click **Logs for this span**. Loki shows the log line emitted inside
+   that request, matched by `trace_id`.
+4. Go the other way: in *Warnings and errors*, expand a `trace_demo_failed` line and follow
+   its `trace_id` link back to Tempo.
+5. **Explore → Tempo → Service Graph** shows the dependency map derived from spans.
+
+How it is wired: [ADR 0002](docs/adr/0002-observability-pipeline.md).
 
 ## Develop
 
 ```bash
 make install     # poetry install in every Python app + npm ci
 make check       # ruff, import-linter, mypy --strict, eslint, tsc
+make check-infra # validates compose, collector, Prometheus, Tempo, Loki and dashboards
 make test-unit   # no containers
 make test-it     # real TimescaleDB + Redis via Testcontainers
 make help        # everything else
@@ -94,7 +127,7 @@ scripts/        repo tooling (import contract generator)
 ## Roadmap
 
 1. ✅ Foundation: monorepo, CI, compose, module boundaries
-2. Observability: OTel Collector, Prometheus, Grafana, Tempo, Loki
+2. ✅ Observability: OTel Collector, Prometheus, Grafana, Tempo, Loki
 3. Identity and auth: Keycloak, BFF, roles, guests, audit log
 4. Device protocol and MQTT broker with TLS and ACLs, basic simulator
 5. Devices and provisioning: pairing, credentials, twin, LWT
