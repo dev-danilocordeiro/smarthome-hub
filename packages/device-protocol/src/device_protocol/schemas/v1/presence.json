@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smarthome.local/schemas/device-protocol/v1/presence.json",
+  "title": "Presence",
+  "description": "Online/offline. Retained, QoS 1. The offline payload is also registered as the MQTT Last Will, so the broker publishes it when a device drops without saying goodbye.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.json#/$defs/schema_version"
+    },
+    "status": {
+      "enum": [
+        "online",
+        "offline"
+      ]
+    },
+    "reason": {
+      "enum": [
+        "boot",
+        "reconnect",
+        "shutdown",
+        "connection_lost"
+      ]
+    },
+    "ts": {
+      "$ref": "common.json#/$defs/timestamp"
+    },
+    "firmware": {
+      "type": "string",
+      "maxLength": 40
+    }
+  }
+}

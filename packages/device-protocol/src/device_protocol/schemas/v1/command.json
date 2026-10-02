@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smarthome.local/schemas/device-protocol/v1/command.json",
+  "title": "Command",
+  "description": "Hub to device. QoS 1, so it may arrive twice: devices execute a command_id at most once.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "command_id",
+    "issued_at",
+    "expires_at",
+    "action"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.json#/$defs/schema_version"
+    },
+    "command_id": {
+      "$ref": "common.json#/$defs/command_id"
+    },
+    "issued_at": {
+      "$ref": "common.json#/$defs/timestamp"
+    },
+    "expires_at": {
+      "$ref": "common.json#/$defs/timestamp",
+      "description": "Devices must reject a command received after this instant."
+    },
+    "action": {
+      "enum": [
+        "set_state",
+        "identify",
+        "reboot"
+      ]
+    },
+    "desired": {
+      "$ref": "common.json#/$defs/device_state"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "action": {
+            "const": "set_state"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "desired"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "desired"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -36,7 +36,7 @@ jobs:
       - run: pipx install "poetry>=2.2,<3"
       - name: Install every Python app
         run: |
-          for app in apps/api apps/ingestor apps/worker apps/simulator; do
+          for app in apps/api apps/ingestor apps/worker apps/simulator packages/device-protocol; do
             (cd "$app" && poetry install --no-interaction)
           done
       - name: Ruff
@@ -49,7 +49,7 @@ jobs:
           cd apps/api && poetry run lint-imports
       - name: mypy --strict
         run: |
-          for app in apps/api apps/ingestor apps/worker apps/simulator; do
+          for app in apps/api apps/ingestor apps/worker apps/simulator packages/device-protocol; do
             (cd "$app" && poetry run mypy)
           done
 
@@ -62,10 +62,17 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pipx install "poetry>=2.2,<3"
-      - run: cd apps/api && poetry install --no-interaction
+      - name: Install
+        run: |
+          for app in apps/api apps/simulator packages/device-protocol; do
+            (cd "$app" && poetry install --no-interaction)
+          done
       - name: Unit and architecture tests
-        run: cd apps/api && poetry run pytest tests/unit tests/architecture
-      - name: Integration tests (Testcontainers)
+        run: |
+          (cd apps/api && poetry run pytest tests/unit tests/architecture)
+          (cd packages/device-protocol && poetry run pytest)
+          (cd apps/simulator && poetry run pytest)
+      - name: "Integration tests (Testcontainers: TimescaleDB, Redis, Keycloak, Mosquitto)"
         run: cd apps/api && poetry run pytest tests/integration
 
   image:

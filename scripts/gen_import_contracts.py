@@ -53,10 +53,10 @@ def render(modules: list[str]) -> str:
         "source_modules =\n    smarthome.shared\n"
         "forbidden_modules =\n    smarthome.modules\n",
         "[importlinter:contract:entrypoints]\n"
-        "name = Modules never import an entrypoint\n"
+        "name = Modules never import an entrypoint or developer tooling\n"
         "type = forbidden\n"
-        "source_modules =\n    smarthome.modules\n"
-        "forbidden_modules =\n    smarthome.main\n",
+        "source_modules =\n    smarthome.modules\n    smarthome.shared\n"
+        "forbidden_modules =\n    smarthome.main\n    smarthome.devtools\n",
     ]
     for module in modules:
         others = [m for m in modules if m != module]

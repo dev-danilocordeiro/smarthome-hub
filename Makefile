@@ -2,7 +2,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 COMPOSE := docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.observability.yml
-PY_APPS := apps/api apps/ingestor apps/worker apps/simulator
+PY_APPS := apps/api apps/ingestor apps/worker apps/simulator packages/device-protocol
 API     := cd apps/api && poetry run
 RUFF    := apps/api/.venv/bin/ruff
 
@@ -26,8 +26,12 @@ install: ## Install Python (Poetry) and Node (npm) dependencies
 
 # --- Stack -------------------------------------------------------------------
 
+.PHONY: certs
+certs: ## Generate the development CA and broker certificate (infra/mqtt/certs, gitignored)
+	scripts/gen-dev-certs.sh
+
 .PHONY: up
-up: .env ## Build and start the stack, waiting until every service is healthy
+up: .env certs ## Build and start the stack, waiting until every service is healthy
 	$(COMPOSE) up -d --build --wait
 
 .PHONY: down
@@ -58,6 +62,26 @@ api-dev: .env ## Run the API on the host with reload (needs postgres + redis up)
 .PHONY: demo-traffic
 demo-traffic: ## Generate mixed traffic for the dashboards (SECONDS=120 RPS=10)
 	python3 scripts/demo_traffic.py --seconds $${SECONDS:-120} --rps $${RPS:-10}
+
+# --- Simulator -----------------------------------------------------------------
+
+SIM_DIR   := .simulator
+SIM       := cd apps/simulator && poetry run python -m smarthome_simulator
+HOMES     ?= 3
+DEVICES   ?= 20
+SPEED     ?= 1
+FAULTS    ?= 1
+# Until device pairing exists (phase 5) the hub registers the plan straight in the broker.
+REGISTER  := set -a; source .env; set +a; cd apps/api && \
+	SMARTHOME_MQTT_CA_FILE=$(CURDIR)/infra/mqtt/certs/ca.crt \
+	SMARTHOME_MQTT_PORT=$${MQTT_TLS_PORT:-8883} poetry run python -m smarthome.devtools.fleet
+
+.PHONY: simulate
+simulate: .env certs ## Run 3 homes x 20 devices against the broker (HOMES, DEVICES, SPEED, FAULTS)
+	@mkdir -p $(SIM_DIR)
+	$(SIM) plan --homes $(HOMES) --devices-per-home $(DEVICES) > $(CURDIR)/$(SIM_DIR)/plan.json
+	$(REGISTER) register $(CURDIR)/$(SIM_DIR)/plan.json $(CURDIR)/$(SIM_DIR)/fleet.json
+	$(SIM) run $(CURDIR)/$(SIM_DIR)/fleet.json --speed $(SPEED) --fault-rate $(FAULTS)
 
 .PHONY: web-dev
 web-dev: ## Run the Vite dev server
@@ -91,7 +115,7 @@ typecheck: ## mypy --strict on every Python app, tsc on the web app
 	npm run -w apps/web typecheck
 
 .PHONY: check-infra
-check-infra: .env ## Validate compose, collector, Prometheus, Tempo, Loki and dashboard configs
+check-infra: .env ## Validate compose, collector, Prometheus, Tempo, Loki, dashboards and CI workflows
 	$(COMPOSE) config --quiet
 	docker run --rm -v $(CURDIR)/infra/otel-collector/config.yaml:/c.yaml:ro \
 	  $(call image,otel-collector) validate --config=/c.yaml
@@ -102,6 +126,7 @@ check-infra: .env ## Validate compose, collector, Prometheus, Tempo, Loki and da
 	docker run --rm -v $(CURDIR)/infra/loki/loki.yaml:/l.yaml:ro \
 	  $(call image,loki) -config.file=/l.yaml -verify-config
 	python3 scripts/check_dashboards.py
+	docker run --rm -v $(CURDIR):/repo -w /repo rhysd/actionlint:1.7.12 -color=false
 
 .PHONY: check
 check: lint typecheck ## Every static gate CI runs (plus check-infra, which needs Docker)
@@ -111,10 +136,12 @@ check: lint typecheck ## Every static gate CI runs (plus check-infra, which need
 .PHONY: test-unit
 test-unit: ## Fast tests: no containers
 	$(API) pytest tests/unit tests/architecture
+	cd packages/device-protocol && poetry run pytest
+	cd apps/simulator && poetry run pytest
 	npm run -w apps/web test
 
 .PHONY: test-it
-test-it: ## Integration tests against real Postgres/TimescaleDB and Redis (needs Docker)
+test-it: ## Integration tests: real Postgres/TimescaleDB, Redis, Keycloak, Mosquitto (needs Docker)
 	$(API) pytest tests/integration
 
 .PHONY: test

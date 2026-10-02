@@ -4,7 +4,7 @@ A multi-tenant smart home hub built to show **event-driven design, real-time
 telemetry, time-series storage, device security and observability**. Real hardware
 is optional: a simulator speaks the same MQTT protocol a real ESP32 would.
 
-> **Status:** phase 3 of 11 (identity and auth). Most of the product below is still on the roadmap.
+> **Status:** phase 4 of 11 (device protocol and broker). Most of the product below is still on the roadmap.
 > [Versão em português](README.pt-BR.md).
 
 ## What it will do
@@ -66,6 +66,7 @@ make down
 | Redis      | `localhost:16379`              |                                                |
 | Web (dev)  | http://localhost:5173          | `make web-dev`, not containerised yet          |
 | Keycloak   | http://localhost:8080          | realm `smarthome`; admin password in `.env`    |
+| MQTT (TLS) | `localhost:8883`               | Mosquitto; dev CA in `infra/mqtt/certs/ca.crt` |
 | Grafana    | http://localhost:3000          | anonymous viewer; admin password in `.env`     |
 | Prometheus | http://localhost:9090          | OTLP receiver + exemplar storage               |
 | Tempo      | http://localhost:3200          | traces; metrics-generator → Prometheus         |
@@ -90,6 +91,21 @@ How it works: the API is a **backend-for-frontend**. The browser only ever holds
 tokens rotate, and unsafe requests need a CSRF token ([ADR 0003](docs/adr/0003-bff-sessions-and-csrf.md)).
 Homes are tenants with per-home roles and a hash-chained, append-only audit log
 ([ADR 0004](docs/adr/0004-tenancy-roles-and-audit-log.md)).
+
+## Simulated devices
+
+```bash
+make up
+make simulate                     # 3 homes x 20 devices; SPEED=600 makes a day pass in 2.4 min
+make simulate HOMES=1 DEVICES=5 FAULTS=0
+```
+
+Devices speak [protocol v1](docs/device-protocol.md) over MQTT 5 + TLS, each with its own
+credentials and an ACL limited to its own topics ([ADR 0005](docs/adr/0005-mqtt-broker-and-qos.md)).
+The simulator models a day in each home: outdoor temperature, sunlight, residents coming
+and going, lights following presence and darkness, a fridge compressor cycle, a washer run.
+It also injects faults: dropped connections (seen through the Last Will), noisy readings,
+malformed payloads and draining batteries.
 
 ## Tour: follow one request through every signal
 
@@ -146,7 +162,7 @@ scripts/        repo tooling (import contract generator)
 1. ✅ Foundation: monorepo, CI, compose, module boundaries
 2. ✅ Observability: OTel Collector, Prometheus, Grafana, Tempo, Loki
 3. ✅ Identity and auth: Keycloak, BFF, roles, guests, audit log
-4. Device protocol and MQTT broker with TLS and ACLs, basic simulator
+4. ✅ Device protocol and MQTT broker with TLS and ACLs, basic simulator
 5. Devices and provisioning: pairing, credentials, twin, LWT
 6. Telemetry: batched ingestion, hypertables, continuous aggregates
 7. Commands: ack, timeout, idempotency, trace propagation over MQTT

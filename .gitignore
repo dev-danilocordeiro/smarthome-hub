@@ -29,3 +29,4 @@ infra/mqtt/certs/
 .idea/
 .vscode/
 .DS_Store
+.simulator/

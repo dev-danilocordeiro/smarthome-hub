@@ -3,11 +3,39 @@ name = "device-protocol"
 version = "0.1.0"
 description = "MQTT topic layout and message schemas shared by the hub, the simulator and real devices."
 requires-python = ">=3.12,<3.15"
-dependencies = []
+dependencies = [
+  "jsonschema[format-nongpl]>=4.23",
+]
 
 [tool.poetry]
 packages = [{ include = "device_protocol", from = "src" }]
+include = [{ path = "src/device_protocol/schemas/**/*.json", format = ["sdist", "wheel"] }]
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.3"
+hypothesis = ">=6.120"
+ruff = ">=0.8"
+mypy = ">=1.13"
 
 [build-system]
 requires = ["poetry-core>=2.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+extend = "../../ruff.toml"
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+mypy_path = "src"
+files = ["src", "tests"]
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["jsonschema.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = ["error"]

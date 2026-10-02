@@ -59,6 +59,14 @@ class Settings(BaseSettings):
     web_app_url: str = "http://localhost:5173"
     session_absolute_lifetime_hours: int = Field(default=12, ge=1, le=24 * 30)
 
+    # MQTT broker (TLS only). The admin account manages device credentials via the
+    # dynamic-security plugin; it never publishes device traffic.
+    mqtt_host: str = "localhost"
+    mqtt_port: int = 8883
+    mqtt_ca_file: str = "infra/mqtt/certs/ca.crt"
+    mqtt_admin_user: str = "hub-admin"
+    mqtt_admin_password: SecretStr = SecretStr("mqtt-admin-dev-only")
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
