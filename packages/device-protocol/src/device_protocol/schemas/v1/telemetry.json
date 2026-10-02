@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smarthome.local/schemas/device-protocol/v1/telemetry.json",
+  "title": "Telemetry",
+  "description": "Periodic sensor readings. QoS 0: a lost sample is replaced by the next one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "message_id",
+    "seq",
+    "ts",
+    "readings"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.json#/$defs/schema_version"
+    },
+    "message_id": {
+      "$ref": "common.json#/$defs/message_id"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic per boot; a reset to 0 marks a reboot."
+    },
+    "ts": {
+      "$ref": "common.json#/$defs/timestamp"
+    },
+    "readings": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "temperature_c": {
+          "type": "number",
+          "minimum": -40,
+          "maximum": 85
+        },
+        "humidity_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "illuminance_lux": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 200000
+        },
+        "power_w": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 25000
+        },
+        "energy_wh_total": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Cumulative counter; consumers compute deltas."
+        },
+        "voltage_v": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 300
+        },
+        "battery_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "rssi_dbm": {
+          "type": "number",
+          "minimum": -120,
+          "maximum": 0
+        },
+        "motion": {
+          "type": "boolean"
+        },
+        "contact_open": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

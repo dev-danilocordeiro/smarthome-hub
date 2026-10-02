@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smarthome.local/schemas/device-protocol/v1/common.json",
+  "title": "Shared definitions",
+  "$defs": {
+    "schema_version": {
+      "const": "1",
+      "description": "Payload schema version; bumps on breaking changes."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "maxLength": 40,
+      "description": "RFC 3339 timestamp from the device clock."
+    },
+    "message_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{8,64}$",
+      "description": "Unique per message; the hub drops duplicates (QoS 1 redelivery, retries)."
+    },
+    "command_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "device_state": {
+      "type": "object",
+      "description": "Twin properties. Each device type reports the subset it supports.",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "on": {
+          "type": "boolean"
+        },
+        "brightness_pct": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "color_temp_k": {
+          "type": "integer",
+          "minimum": 1500,
+          "maximum": 9000
+        },
+        "target_temp_c": {
+          "type": "number",
+          "minimum": 5,
+          "maximum": 35
+        },
+        "hvac_mode": {
+          "enum": [
+            "off",
+            "heat",
+            "cool",
+            "auto"
+          ]
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "armed": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

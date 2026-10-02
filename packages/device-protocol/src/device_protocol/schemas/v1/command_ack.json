@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smarthome.local/schemas/device-protocol/v1/command_ack.json",
+  "title": "Command acknowledgement",
+  "description": "Device to hub, QoS 1. `applied` means the reported state now reflects the command.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "command_id",
+    "ts",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.json#/$defs/schema_version"
+    },
+    "command_id": {
+      "$ref": "common.json#/$defs/command_id"
+    },
+    "ts": {
+      "$ref": "common.json#/$defs/timestamp"
+    },
+    "status": {
+      "enum": [
+        "received",
+        "applied",
+        "rejected",
+        "failed",
+        "expired"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "maxLength": 200
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smarthome.local/schemas/device-protocol/v1/state.json",
+  "title": "Reported state",
+  "description": "The device's actual state (the twin's `reported` side). Retained, QoS 1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "message_id",
+    "ts",
+    "reported"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.json#/$defs/schema_version"
+    },
+    "message_id": {
+      "$ref": "common.json#/$defs/message_id"
+    },
+    "ts": {
+      "$ref": "common.json#/$defs/timestamp"
+    },
+    "reported": {
+      "$ref": "common.json#/$defs/device_state"
+    }
+  }
+}

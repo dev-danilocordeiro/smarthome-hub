@@ -26,8 +26,12 @@ install: ## Install Python (Poetry) and Node (npm) dependencies
 
 # --- Stack -------------------------------------------------------------------
 
+.PHONY: certs
+certs: ## Generate the development CA and broker certificate (infra/mqtt/certs, gitignored)
+	scripts/gen-dev-certs.sh
+
 .PHONY: up
-up: .env ## Build and start the stack, waiting until every service is healthy
+up: .env certs ## Build and start the stack, waiting until every service is healthy
 	$(COMPOSE) up -d --build --wait
 
 .PHONY: down
