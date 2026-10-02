@@ -11,15 +11,15 @@ from smarthome.shared.infrastructure.mqtt_consumer import Handler, Received
 
 def handlers(service: DevicesService) -> dict[MessageKind, Handler]:
     async def presence(message: Received) -> bool:
-        payload = message.payload
-        # The Will is registered at connect time and carries no timestamp, so the
-        # moment the broker delivered it is the best answer to "offline since when?".
-        at = datetime.fromisoformat(payload["ts"]) if "ts" in payload else message.received_at
+        # Ordered by the hub's clock, not the device's. The Last Will is composed at
+        # connect time and carries no timestamp, so comparing a device-stamped `online`
+        # with a hub-stamped `offline` would mix clocks: a device running ahead would
+        # make its own Will look stale and stay "online" forever.
         return await service.record_presence(
             home_id=UUID(message.topic.home_id),
             device_id=message.topic.device_id,
-            online=payload["status"] == "online",
-            at=at,
+            online=message.payload["status"] == "online",
+            at=message.received_at,
         )
 
     async def state(message: Received) -> bool:

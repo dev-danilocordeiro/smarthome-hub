@@ -18,7 +18,7 @@ from paho.mqtt.packettypes import PacketTypes
 from paho.mqtt.reasoncodes import ReasonCode
 
 from device_protocol import MessageKind, encode, hub_subscription, topic
-from tests.integration.broker.conftest import Broker
+from tests.integration.mqtt_broker import Broker
 
 DELIVERY_WAIT = 1.5
 

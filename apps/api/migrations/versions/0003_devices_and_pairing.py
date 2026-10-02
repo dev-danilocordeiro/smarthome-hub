@@ -33,7 +33,8 @@ def upgrade() -> None:
             name                text NOT NULL CHECK (char_length(name) BETWEEN 1 AND 80),
             room                text CHECK (char_length(room) <= 40),
             firmware            text CHECK (char_length(firmware) <= 40),
-            status              text NOT NULL CHECK (status IN ('active', 'quarantined', 'revoked')),
+            status              text NOT NULL
+                CHECK (status IN ('active', 'quarantined', 'revoked')),
             status_reason       text CHECK (char_length(status_reason) <= 200),
             status_changed_at   timestamptz NOT NULL,
             paired_by           text NOT NULL,
@@ -44,7 +45,9 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute("CREATE INDEX devices_by_home ON devices.devices (home_id) WHERE status <> 'revoked'")
+    op.execute(
+        "CREATE INDEX devices_by_home ON devices.devices (home_id) WHERE status <> 'revoked'"
+    )
 
     op.execute(
         f"""
