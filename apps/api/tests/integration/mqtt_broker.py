@@ -103,12 +103,20 @@ def broker(tmp_path_factory: pytest.TempPathFactory, repo_root: Path) -> Iterato
                 if time.monotonic() > deadline:
                     raise TimeoutError(container.get_logs()) from None
                 time.sleep(0.5)
-        # Failed handshakes while the broker was booting leak paho's TLS sockets; reap them
-        # here so their ResourceWarnings do not surface in whichever test runs next.
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", ResourceWarning)
-            gc.collect()
+        # Failed handshakes while the broker was booting leak paho's TLS sockets.
+        reap_leaked_sockets()
         yield broker
+
+
+def reap_leaked_sockets() -> None:
+    """Collect TLS sockets paho abandons when the broker refuses or kicks a client.
+
+    Left to the GC, their ResourceWarnings surface (as errors) in whichever test happens to
+    run next. Collecting them right away keeps that deterministic.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", ResourceWarning)
+        gc.collect()
 
 
 async def _ping(broker: Broker) -> None:

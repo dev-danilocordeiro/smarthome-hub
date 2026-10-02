@@ -24,6 +24,7 @@ from smarthome.main import create_app
 from smarthome.shared.config import Environment, Settings
 from smarthome.shared.infrastructure.db import create_engine
 from smarthome.shared.infrastructure.redis import create_redis
+from tests.integration.mqtt_broker import reap_leaked_sockets
 
 # Keep in sync with infra/docker-compose.yml.
 TIMESCALE_IMAGE = "timescale/timescaledb:2.30.2-pg16"
@@ -52,6 +53,13 @@ def in_memory_telemetry(
     span_exporter: InMemorySpanExporter, metric_reader: InMemoryMetricReader
 ) -> None:
     """Install in-memory providers before any app is built, as an entrypoint would."""
+
+
+@pytest.fixture(autouse=True)
+def _reap_mqtt_sockets(request: pytest.FixtureRequest) -> Iterator[None]:
+    yield
+    if "broker" in request.fixturenames:
+        reap_leaked_sockets()
 
 
 @pytest.fixture(scope="session")
