@@ -1,11 +1,13 @@
 """Smart home device simulator.
 
     python -m smarthome_simulator plan --homes 3 --devices-per-home 20 > plan.json
+    # the hub creates homes and one pairing code per device (devtools `seed`)
+    python -m smarthome_simulator claim pairing.json fleet.json --api http://localhost:8000
     python -m smarthome_simulator run fleet.json [--speed 60] [--fault-rate 1]
 
-`plan` describes homes and devices (no secrets). The hub registers the plan and returns
-a fleet file with per-device credentials, which `run` uses. Depends only on
-`device-protocol`, exactly like real firmware would.
+`plan` describes homes and devices (no secrets). `claim` pairs every device through the
+hub's public provisioning endpoint and stores the returned credentials. Depends only on
+`device-protocol` and HTTP, exactly like real firmware would.
 """
 
 import argparse
@@ -21,6 +23,7 @@ from typing import Any
 from smarthome_simulator.catalog import DeviceType
 from smarthome_simulator.devices import Faults, SimulatedDevice
 from smarthome_simulator.environment import HomeEnvironment
+from smarthome_simulator.pairing import claim_fleet
 from smarthome_simulator.plan import build_plan
 from smarthome_simulator.runtime import BrokerEndpoint, DeviceRunner, now
 
@@ -82,7 +85,12 @@ def main() -> int:
     plan.add_argument("--homes", type=int, default=3)
     plan.add_argument("--devices-per-home", type=int, default=20)
     plan.add_argument("--seed", type=int, default=42)
-    go = sub.add_parser("run", help="run a registered fleet against the broker")
+    pair = sub.add_parser("claim", help="pair every device in a pairing file with the hub")
+    pair.add_argument("pairing", type=Path)
+    pair.add_argument("fleet", type=Path)
+    pair.add_argument("--api", default="http://localhost:8000", help="hub API base URL")
+    pair.add_argument("--ca-file", required=True, help="CA that signed the broker certificate")
+    go = sub.add_parser("run", help="run a paired fleet against the broker")
     go.add_argument("fleet", type=Path)
     go.add_argument("--speed", type=float, default=1.0, help="simulated seconds per real second")
     go.add_argument("--fault-rate", type=float, default=1.0, help="0 disables injected faults")
@@ -97,6 +105,15 @@ def main() -> int:
                 indent=2,
             )
         )
+        return 0
+    if args.command == "claim":
+        fleet = asyncio.run(
+            claim_fleet(
+                json.loads(args.pairing.read_text()), api_url=args.api, ca_file=args.ca_file
+            )
+        )
+        args.fleet.write_text(json.dumps(fleet, indent=2))
+        args.fleet.chmod(0o600)  # broker passwords
         return 0
     fleet = json.loads(args.fleet.read_text())
     asyncio.run(run(fleet, speed=args.speed, fault_rate=args.fault_rate))

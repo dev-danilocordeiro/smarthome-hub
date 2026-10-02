@@ -74,6 +74,9 @@ class Settings(BaseSettings):
     # compose, where the hub reaches the broker as `mqtt`).
     device_broker_host: str = "localhost"
     device_broker_port: int = 8883
+    # Pairing claims per client IP per minute. Low in production (codes are guessable in
+    # principle); raised in development so a simulated fleet can pair in one go.
+    claim_rate_per_minute: int = Field(default=10, ge=1)
 
 
 @lru_cache(maxsize=1)

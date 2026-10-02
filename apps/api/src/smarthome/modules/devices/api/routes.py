@@ -23,7 +23,6 @@ from smarthome.shared.http.rate_limit import Limit
 router = APIRouter(tags=["devices"])
 
 # Pairing codes carry 40 bits and live 10 minutes; these limits keep guessing hopeless.
-CLAIMS_PER_IP = Limit("claim-ip", max_hits=10, window_seconds=60)
 CLAIM_FAILURES_PER_IP = Limit("claim-fail-ip", max_hits=20, window_seconds=3600)
 
 
@@ -83,7 +82,8 @@ async def claim(body: ClaimRequest, request: Request, module: Devices) -> ClaimO
     broker credentials. The password is returned exactly once."""
     client_ip = request.client.host if request.client else "unknown"
     limiter = module.rate_limiter
-    if not await limiter.hit(CLAIMS_PER_IP, client_ip) or await limiter.exceeded(
+    claims_per_ip = Limit("claim-ip", module.settings.claim_rate_per_minute, window_seconds=60)
+    if not await limiter.hit(claims_per_ip, client_ip) or await limiter.exceeded(
         CLAIM_FAILURES_PER_IP, client_ip
     ):
         raise TooManyRequests

@@ -65,23 +65,34 @@ demo-traffic: ## Generate mixed traffic for the dashboards (SECONDS=120 RPS=10)
 
 # --- Simulator -----------------------------------------------------------------
 
-SIM_DIR   := .simulator
+SIM_DIR   := $(CURDIR)/.simulator
 SIM       := cd apps/simulator && poetry run python -m smarthome_simulator
 HOMES     ?= 3
 DEVICES   ?= 20
 SPEED     ?= 1
 FAULTS    ?= 1
-# Until device pairing exists (phase 5) the hub registers the plan straight in the broker.
-REGISTER  := set -a; source .env; set +a; cd apps/api && \
+OWNER     ?= alice
+DEVTOOLS  := set -a; source .env; set +a; cd apps/api && \
 	SMARTHOME_MQTT_CA_FILE=$(CURDIR)/infra/mqtt/certs/ca.crt \
-	SMARTHOME_MQTT_PORT=$${MQTT_TLS_PORT:-8883} poetry run python -m smarthome.devtools.fleet
+	SMARTHOME_MQTT_PORT=$${MQTT_TLS_PORT:-8883} \
+	SMARTHOME_DATABASE_URL=postgresql+asyncpg://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@localhost:$${POSTGRES_PORT}/$${POSTGRES_DB} \
+	SMARTHOME_REDIS_URL=redis://localhost:$${REDIS_PORT}/0 \
+	poetry run python -m smarthome.devtools.fleet
+
+$(SIM_DIR)/fleet.json:
+	@mkdir -p $(SIM_DIR)
+	$(SIM) plan --homes $(HOMES) --devices-per-home $(DEVICES) > $(SIM_DIR)/plan.json
+	$(DEVTOOLS) seed $(SIM_DIR)/plan.json $(SIM_DIR)/pairing.json --owner $(OWNER)
+	$(SIM) claim $(SIM_DIR)/pairing.json $(SIM_DIR)/fleet.json \
+	  --api http://localhost:$${API_PORT:-8000} --ca-file $(CURDIR)/infra/mqtt/certs/ca.crt
 
 .PHONY: simulate
-simulate: .env certs ## Run 3 homes x 20 devices against the broker (HOMES, DEVICES, SPEED, FAULTS)
-	@mkdir -p $(SIM_DIR)
-	$(SIM) plan --homes $(HOMES) --devices-per-home $(DEVICES) > $(CURDIR)/$(SIM_DIR)/plan.json
-	$(REGISTER) register $(CURDIR)/$(SIM_DIR)/plan.json $(CURDIR)/$(SIM_DIR)/fleet.json
-	$(SIM) run $(CURDIR)/$(SIM_DIR)/fleet.json --speed $(SPEED) --fault-rate $(FAULTS)
+simulate: .env certs $(SIM_DIR)/fleet.json ## Pair (first run only) and run 3 homes x 20 devices (HOMES, DEVICES, SPEED, FAULTS)
+	$(SIM) run $(SIM_DIR)/fleet.json --speed $(SPEED) --fault-rate $(FAULTS)
+
+.PHONY: simulate-reset
+simulate-reset: ## Forget the simulated fleet; the next `make simulate` pairs a new one
+	rm -rf $(SIM_DIR)
 
 .PHONY: web-dev
 web-dev: ## Run the Vite dev server
