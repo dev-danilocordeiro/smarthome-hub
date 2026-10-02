@@ -5,7 +5,7 @@ eventos, telemetria em tempo real, séries temporais, segurança de dispositivos
 observabilidade**. Não precisa de hardware: um simulador fala o mesmo protocolo MQTT que um
 ESP32 real falaria.
 
-> **Status:** fase 3 de 11 (identidade e autenticação). A documentação completa está no [README em inglês](README.md).
+> **Status:** fase 4 de 11 (protocolo de dispositivos e broker). A documentação completa está no [README em inglês](README.md).
 
 ## Arquitetura
 
@@ -29,6 +29,7 @@ make check && make test              # gates estáticos e testes
 | Redis      | `localhost:16379`        |
 | Web (dev)  | http://localhost:5173    |
 | Keycloak   | http://localhost:8080    |
+| MQTT (TLS) | `localhost:8883`         |
 | Grafana    | http://localhost:3000    |
 | Prometheus | http://localhost:9090    |
 | Tempo      | http://localhost:3200    |
@@ -49,3 +50,11 @@ Detalhes no [ADR 0002](docs/adr/0002-observability-pipeline.md).
 navegador só recebe um cookie de sessão `HttpOnly`/`SameSite=Strict`, os tokens ficam no
 servidor e as requisições de escrita exigem token CSRF. Detalhes nos ADRs
 [0003](docs/adr/0003-bff-sessions-and-csrf.md) e [0004](docs/adr/0004-tenancy-roles-and-audit-log.md).
+
+## Dispositivos simulados
+
+`make simulate` sobe 3 casas com 20 dispositivos cada, falando o [protocolo v1](docs/device-protocol.md)
+via MQTT 5 com TLS. Cada dispositivo tem credenciais próprias e ACL restrita aos próprios
+tópicos ([ADR 0005](docs/adr/0005-mqtt-broker-and-qos.md)). O simulador modela o dia da casa
+(temperatura, luz do sol, presença, consumo) e injeta falhas: quedas de conexão (detectadas
+pelo Last Will), leituras ruidosas, payloads inválidos e bateria fraca.

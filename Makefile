@@ -2,7 +2,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 COMPOSE := docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.observability.yml
-PY_APPS := apps/api apps/ingestor apps/worker apps/simulator
+PY_APPS := apps/api apps/ingestor apps/worker apps/simulator packages/device-protocol
 API     := cd apps/api && poetry run
 RUFF    := apps/api/.venv/bin/ruff
 
@@ -135,10 +135,12 @@ check: lint typecheck ## Every static gate CI runs (plus check-infra, which need
 .PHONY: test-unit
 test-unit: ## Fast tests: no containers
 	$(API) pytest tests/unit tests/architecture
+	cd packages/device-protocol && poetry run pytest
+	cd apps/simulator && poetry run pytest
 	npm run -w apps/web test
 
 .PHONY: test-it
-test-it: ## Integration tests against real Postgres/TimescaleDB and Redis (needs Docker)
+test-it: ## Integration tests: real Postgres/TimescaleDB, Redis, Keycloak, Mosquitto (needs Docker)
 	$(API) pytest tests/integration
 
 .PHONY: test

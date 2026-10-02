@@ -17,6 +17,8 @@ device-protocol = { path = "../../packages/device-protocol", develop = true }
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.8"
 mypy = ">=1.13"
+pytest = "^9.1.1"
+hypothesis = "^6.168.3"
 
 [build-system]
 requires = ["poetry-core>=2.0"]
@@ -34,4 +36,10 @@ extend = "../../ruff.toml"
 strict = true
 python_version = "3.12"
 mypy_path = "src"
-packages = ["smarthome_simulator"]
+files = ["src", "tests"]
+explicit_package_bases = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = ["error"]
