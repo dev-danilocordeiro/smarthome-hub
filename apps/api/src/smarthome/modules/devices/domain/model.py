@@ -155,8 +155,8 @@ class PairingCode:
 
 @dataclass(frozen=True, slots=True)
 class Twin:
-    """Desired vs reported state. Commands change `desired` (phase 7); the device
-    changes `reported`. While they differ, the device has not caught up yet."""
+    """Desired vs reported state. Commands change `desired`; the device changes
+    `reported`. While they differ, the device has not caught up yet."""
 
     device_id: str
     kind: DeviceKind
@@ -172,6 +172,16 @@ class Twin:
         if unknown:
             raise UnsupportedState(f"{self.kind.value} has no properties {sorted(unknown)}")
         return replace(self, reported=dict(reported), reported_at=at)
+
+    def with_desired(self, desired: dict[str, Any], *, at: datetime) -> "Twin | None":
+        """Merge what a command asks for into `desired`. Properties it does not mention
+        keep their previous desired value. None if a newer command already wrote here."""
+        if self.desired_at is not None and at <= self.desired_at:
+            return None
+        unknown = set(desired) - STATE_PROPERTIES[self.kind]
+        if unknown:
+            raise UnsupportedState(f"{self.kind.value} has no properties {sorted(unknown)}")
+        return replace(self, desired={**self.desired, **desired}, desired_at=at)
 
     def delta(self) -> dict[str, Any]:
         """Desired properties the device has not reported yet."""

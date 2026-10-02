@@ -5,6 +5,7 @@ import httpx
 import structlog
 from fastapi import FastAPI
 
+from smarthome.modules.commands import wiring as commands
 from smarthome.modules.devices import wiring as devices
 from smarthome.modules.identity import wiring as identity
 from smarthome.modules.telemetry import wiring as telemetry
@@ -61,6 +62,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             redis=app.state.redis,
             devices=app.state.devices.service,
         )
+        app.state.commands = commands.build(
+            resolved,
+            engine=app.state.db_engine,
+            devices=app.state.devices.service,
+            clock=SystemClock(),
+        )
         instrument_engine(app.state.db_engine)
         instrument_redis()
         if providers is not None:
@@ -87,6 +94,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     identity.mount(app)
     devices.mount(app)
     telemetry.mount(app)
+    commands.mount(app)
     if resolved.diagnostics_enabled:
         app.include_router(diagnostics_router)
     instrument_app(app)

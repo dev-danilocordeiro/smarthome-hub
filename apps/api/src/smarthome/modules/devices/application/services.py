@@ -253,6 +253,25 @@ class DevicesService:
         await self._live.set_reported(device_id, reported, at=at)
         return True
 
+    # --- Commands (called by the commands module) -----------------------------------
+
+    async def set_desired(
+        self, *, home_id: UUID, device_id: str, desired: dict[str, Any], at: datetime
+    ) -> bool:
+        """Record what a command asked for. Returns False if a newer command got there
+        first (commands may be issued concurrently) or the device is gone."""
+        async with self._uow() as uow:
+            device = await uow.devices.get(device_id)
+            if device is None or device.home_id != home_id:
+                return False
+            twin = await uow.twins.lock(device_id)
+            updated = twin.with_desired(desired, at=at) if twin else None
+            if updated is None:
+                return False
+            await uow.twins.save_desired(updated)
+            await uow.commit()
+        return True
+
     @staticmethod
     async def _active_device(
         uow: DevicesUnitOfWork, home_id: UUID, device_id: str

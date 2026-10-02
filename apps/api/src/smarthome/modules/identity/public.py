@@ -10,6 +10,7 @@ Other modules authenticate and authorize through these names only:
 
 from smarthome.modules.identity.api.dependencies import (
     CurrentPrincipal,
+    require_device_access,
     require_home_access,
 )
 from smarthome.modules.identity.application.services import HomeAccess
@@ -24,5 +25,6 @@ __all__ = [
     "Principal",
     "Role",
     "UserId",
+    "require_device_access",
     "require_home_access",
 ]

@@ -224,6 +224,15 @@ class PostgresTwins:
             {"id": twin.device_id, "reported": json.dumps(twin.reported), "at": twin.reported_at},
         )
 
+    async def save_desired(self, twin: Twin) -> None:
+        await self._conn.execute(
+            text(
+                "UPDATE devices.twins SET desired = CAST(:desired AS jsonb), desired_at = :at"
+                " WHERE device_id = :id"
+            ),
+            {"id": twin.device_id, "desired": json.dumps(twin.desired), "at": twin.desired_at},
+        )
+
 
 class PostgresDevicesUnitOfWork:
     devices: PostgresDevices

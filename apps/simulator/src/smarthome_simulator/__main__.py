@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from smarthome_simulator import tracing
 from smarthome_simulator.catalog import DeviceType
 from smarthome_simulator.devices import Faults, SimulatedDevice
 from smarthome_simulator.environment import HomeEnvironment
@@ -116,7 +117,11 @@ def main() -> int:
         args.fleet.chmod(0o600)  # broker passwords
         return 0
     fleet = json.loads(args.fleet.read_text())
-    asyncio.run(run(fleet, speed=args.speed, fault_rate=args.fault_rate))
+    tracing.configure()
+    try:
+        asyncio.run(run(fleet, speed=args.speed, fault_rate=args.fault_rate))
+    finally:
+        tracing.shutdown()
     return 0
 
 

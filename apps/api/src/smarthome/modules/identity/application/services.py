@@ -32,6 +32,11 @@ class HomeAccess:
     def role(self) -> Role:
         return self.membership.role
 
+    def allows(
+        self, permission: Permission, *, now: datetime, device_id: str | None = None
+    ) -> bool:
+        return self.membership.allows(permission, now=now, device_id=device_id)
+
 
 @dataclass(frozen=True, slots=True)
 class MemberView:

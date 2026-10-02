@@ -82,6 +82,8 @@ class Twins(Repo):
     async def save_reported(self, t: Twin) -> None:
         self.s.twins[t.device_id] = t
 
+    save_desired = save_reported
+
 
 class Audit(Repo):
     async def append(self, event: AuditEvent, *, occurred_at: datetime) -> None:

@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     mqtt_admin_user: str = "hub-admin"
     mqtt_admin_password: SecretStr = SecretStr("mqtt-admin-dev-only")
     # The hub's own MQTT identity for consuming device traffic (ingestor) and sending
-    # commands. Created idempotently by the ingestor at startup.
+    # commands (worker). Created idempotently by the ingestor at startup.
     mqtt_hub_user: str = "hub-ingestor"
     mqtt_hub_password: SecretStr = SecretStr("mqtt-hub-dev-only")
     # What devices are told to connect to when they pair (differs from mqtt_host inside
@@ -89,6 +89,14 @@ class Settings(BaseSettings):
     telemetry_1m_retention_days: int = Field(default=90, ge=1)
     telemetry_1h_retention_days: int = Field(default=730, ge=1)
     telemetry_history_cache_s: int = Field(default=10, ge=0)
+
+    # Commands and the outbox relay (ADR 0009).
+    # After a command's deadline, how long to wait for its ack before calling it timed out.
+    command_ack_grace_s: int = Field(default=10, ge=0)
+    command_sweep_interval_s: float = Field(default=5.0, gt=0)
+    outbox_batch_size: int = Field(default=100, ge=1)
+    outbox_poll_interval_s: float = Field(default=1.0, gt=0)
+    outbox_retention_hours: int = Field(default=24, ge=1)
 
 
 @lru_cache(maxsize=1)

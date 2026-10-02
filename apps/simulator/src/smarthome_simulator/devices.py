@@ -60,6 +60,9 @@ class SimulatedDevice:
     rssi_dbm: float = -60.0
     seq: int = 0
     _seen: OrderedDict[str, str] = field(default_factory=OrderedDict)
+    # Issue time of the newest set_state applied. The hub may relay commands out of order
+    # (several relays, retries), so an older one arriving later must not undo a newer one.
+    _state_issued_at: datetime | None = None
     _last_occupied: bool | None = None
     _door_open_ticks: int = 0
     _washer_until: datetime | None = None
@@ -168,12 +171,16 @@ class SimulatedDevice:
             status, reason = "expired", "received after expires_at"
         elif command["action"] == "set_state":
             desired: dict[str, Any] = command["desired"]
+            issued_at = datetime.fromisoformat(command["issued_at"])
             unsupported = set(desired) - STATE_PROPERTIES[self.kind]
             if unsupported:
                 status, reason = "rejected", f"unsupported properties: {sorted(unsupported)}"
+            elif self._state_issued_at is not None and issued_at < self._state_issued_at:
+                status, reason = "rejected", "superseded by a newer command"
             else:
                 before = dict(self.state)
                 self.state.update(desired)
+                self._state_issued_at = issued_at
                 changed = self.state != before
                 status, reason = "applied", ""
         elif command["action"] == "reboot":

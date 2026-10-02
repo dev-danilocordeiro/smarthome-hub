@@ -143,3 +143,16 @@ def test_a_device_cannot_report_properties_its_kind_does_not_have() -> None:
 
     with pytest.raises(UnsupportedState):
         twin.with_reported({"locked": True}, at=NOW)
+
+
+def test_desired_state_merges_newer_commands_and_ignores_older_ones() -> None:
+    twin = Twin(device_id="d", kind=DeviceKind.LIGHT)
+    first = twin.with_desired({"on": True, "brightness_pct": 40}, at=NOW)
+    assert first is not None
+    second = first.with_desired({"brightness_pct": 80}, at=NOW + timedelta(seconds=1))
+    assert second is not None
+
+    assert second.desired == {"on": True, "brightness_pct": 80}
+    assert second.with_desired({"on": False}, at=NOW) is None  # issued before the last write
+    with pytest.raises(UnsupportedState):
+        second.with_desired({"locked": True}, at=NOW + timedelta(seconds=2))

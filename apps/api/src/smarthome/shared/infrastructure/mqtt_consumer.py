@@ -18,7 +18,7 @@ from pathlib import Path
 import aiomqtt
 import structlog
 from aiomqtt import ProtocolVersion
-from opentelemetry import metrics, trace
+from opentelemetry import metrics, propagate, trace
 
 from device_protocol import (
     DeviceTopic,
@@ -102,6 +102,11 @@ def subscription_acls() -> list[dict[str, object]]:
     return [*subscribe, publish]
 
 
+def user_properties(message: aiomqtt.Message) -> dict[str, str]:
+    pairs = getattr(message.properties, "UserProperty", None) or []
+    return {str(k): str(v) for k, v in pairs}
+
+
 class DeviceTrafficConsumer:
     def __init__(self, config: ConsumerConfig, handlers: Mapping[MessageKind, Handler]) -> None:
         self._config = config
@@ -157,14 +162,23 @@ class DeviceTrafficConsumer:
 
     async def _consume(self, client: aiomqtt.Client) -> None:
         async for message in client.messages:
-            await self.handle(str(message.topic), message.payload)
+            await self.handle(str(message.topic), message.payload, user_properties(message))
 
-    async def handle(self, topic_name: str, raw: object) -> str:
-        """Validate and dispatch one message; returns the outcome (also used by tests)."""
+    async def handle(
+        self, topic_name: str, raw: object, headers: Mapping[str, str] | None = None
+    ) -> str:
+        """Validate and dispatch one message; returns the outcome (also used by tests).
+
+        A device that sends a W3C `traceparent` user property (command acks do) continues
+        its trace here, so a command can be followed from the request to the ack.
+        """
         started = time.perf_counter()
         kind = "unknown"
         outcome = "invalid"
-        with tracer.start_as_current_span("ingest device message") as span:
+        parent = propagate.extract(dict(headers)) if headers else None
+        with tracer.start_as_current_span(
+            "ingest device message", context=parent, kind=trace.SpanKind.CONSUMER
+        ) as span:
             try:
                 device_topic = parse(topic_name)
                 kind = device_topic.kind.value
