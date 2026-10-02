@@ -9,6 +9,7 @@ select = [
 ]
 ignore = [
   "PLR0913",  # FastAPI dependency signatures legitimately take many params
+  "N818",     # domain exceptions are named for what happened (LastOwner), not "...Error"
 ]
 
 [lint.per-file-ignores]
