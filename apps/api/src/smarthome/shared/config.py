@@ -66,6 +66,14 @@ class Settings(BaseSettings):
     mqtt_ca_file: str = "infra/mqtt/certs/ca.crt"
     mqtt_admin_user: str = "hub-admin"
     mqtt_admin_password: SecretStr = SecretStr("mqtt-admin-dev-only")
+    # The hub's own MQTT identity for consuming device traffic (ingestor) and sending
+    # commands. Created idempotently by the ingestor at startup.
+    mqtt_hub_user: str = "hub-ingestor"
+    mqtt_hub_password: SecretStr = SecretStr("mqtt-hub-dev-only")
+    # What devices are told to connect to when they pair (differs from mqtt_host inside
+    # compose, where the hub reaches the broker as `mqtt`).
+    device_broker_host: str = "localhost"
+    device_broker_port: int = 8883
 
 
 @lru_cache(maxsize=1)
