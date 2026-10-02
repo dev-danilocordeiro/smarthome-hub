@@ -306,7 +306,9 @@ def test_utc_is_used_throughout() -> None:
     assert FakeClock().now().tzinfo is UTC
 
 
-async def test_a_scoped_guest_lists_only_the_devices_in_their_scope(service: DevicesService) -> None:
+async def test_a_scoped_guest_lists_only_the_devices_in_their_scope(
+    service: DevicesService,
+) -> None:
     door = await paired(service, DeviceKind.LOCK)
     await paired(service, DeviceKind.CAMERA)
 

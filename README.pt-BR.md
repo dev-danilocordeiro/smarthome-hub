@@ -5,7 +5,7 @@ eventos, telemetria em tempo real, séries temporais, segurança de dispositivos
 observabilidade**. Não precisa de hardware: um simulador fala o mesmo protocolo MQTT que um
 ESP32 real falaria.
 
-> **Status:** fase 4 de 11 (protocolo de dispositivos e broker). A documentação completa está no [README em inglês](README.md).
+> **Status:** fase 5 de 11 (dispositivos e provisionamento). A documentação completa está no [README em inglês](README.md).
 
 ## Arquitetura
 
@@ -58,3 +58,11 @@ via MQTT 5 com TLS. Cada dispositivo tem credenciais próprias e ACL restrita ao
 tópicos ([ADR 0005](docs/adr/0005-mqtt-broker-and-qos.md)). O simulador modela o dia da casa
 (temperatura, luz do sol, presença, consumo) e injeta falhas: quedas de conexão (detectadas
 pelo Last Will), leituras ruidosas, payloads inválidos e bateria fraca.
+
+## Pareamento
+
+Na primeira execução, `make simulate` cria três casas da `alice` e um código de pareamento por
+dispositivo. Cada dispositivo simulado se pareia sozinho via HTTP (`POST /provisioning/claim`),
+como um ESP32 real faria, e recebe credenciais próprias no broker. O ingestor mantém presença
+(inclusive via Last Will) e o twin (desired/reported) de cada dispositivo.
+Detalhes no [ADR 0006](docs/adr/0006-device-provisioning-credentials-and-twin.md).

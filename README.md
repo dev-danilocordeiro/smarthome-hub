@@ -4,7 +4,7 @@ A multi-tenant smart home hub built to show **event-driven design, real-time
 telemetry, time-series storage, device security and observability**. Real hardware
 is optional: a simulator speaks the same MQTT protocol a real ESP32 would.
 
-> **Status:** phase 4 of 11 (device protocol and broker). Most of the product below is still on the roadmap.
+> **Status:** phase 5 of 11 (devices and provisioning). Most of the product below is still on the roadmap.
 > [Versão em português](README.pt-BR.md).
 
 ## What it will do
@@ -96,9 +96,17 @@ Homes are tenants with per-home roles and a hash-chained, append-only audit log
 
 ```bash
 make up
-make simulate                     # 3 homes x 20 devices; SPEED=600 makes a day pass in 2.4 min
-make simulate HOMES=1 DEVICES=5 FAULTS=0
+make simulate                     # first run pairs 3 homes x 20 devices, then runs them
+make simulate SPEED=600           # a simulated day passes in 2.4 minutes
+make simulate-reset               # forget the fleet; the next run pairs a new one
 ```
+
+The first `make simulate` creates three homes owned by `alice`, with one pairing code
+per device, and then **every simulated device pairs itself over HTTP**
+(`POST /provisioning/claim`), the same way a real ESP32 would. Each device gets its own
+broker credentials. Sign in as alice to see them; `GET /homes/{id}/devices` shows
+presence (fed by the ingestor and the devices' Last Will) and each device's twin
+([ADR 0006](docs/adr/0006-device-provisioning-credentials-and-twin.md)).
 
 Devices speak [protocol v1](docs/device-protocol.md) over MQTT 5 + TLS, each with its own
 credentials and an ACL limited to its own topics ([ADR 0005](docs/adr/0005-mqtt-broker-and-qos.md)).
@@ -163,7 +171,7 @@ scripts/        repo tooling (import contract generator)
 2. ✅ Observability: OTel Collector, Prometheus, Grafana, Tempo, Loki
 3. ✅ Identity and auth: Keycloak, BFF, roles, guests, audit log
 4. ✅ Device protocol and MQTT broker with TLS and ACLs, basic simulator
-5. Devices and provisioning: pairing, credentials, twin, LWT
+5. ✅ Devices and provisioning: pairing, credentials, twin, LWT
 6. Telemetry: batched ingestion, hypertables, continuous aggregates
 7. Commands: ack, timeout, idempotency, trace propagation over MQTT
 8. Automations: DSL, rule engine, scenes, schedules, dry run
