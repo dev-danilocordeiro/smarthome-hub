@@ -12,6 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncTransaction
 
+from smarthome.modules.identity.domain.errors import InvalidInvitation
 from smarthome.modules.identity.domain.model import (
     Home,
     HomeId,
@@ -229,13 +230,15 @@ class PostgresInvitations:
         )
 
     async def save_acceptance(self, invitation: Invitation) -> None:
-        await self._conn.execute(
+        result = await self._conn.execute(
             text(
                 "UPDATE identity.invitations SET accepted_by = :by, accepted_at = :at"
                 " WHERE id = :id AND accepted_at IS NULL"
             ),
             {"id": invitation.id, "by": invitation.accepted_by, "at": invitation.accepted_at},
         )
+        if result.rowcount != 1:
+            raise InvalidInvitation("invitation is expired, revoked or already used")
 
 
 class PostgresUserDirectory:

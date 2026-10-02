@@ -13,7 +13,7 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
-"**/tests/**" = ["S101", "PLR2004", "S603", "S607"]
+"**/tests/**" = ["S101", "S105", "S106", "PLR2004", "S603", "S607"]  # fixtures hold fake secrets
 "**/migrations/**" = ["N999"]
 
 [lint.flake8-tidy-imports]
