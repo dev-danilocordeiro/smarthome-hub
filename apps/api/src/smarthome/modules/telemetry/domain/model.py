@@ -66,3 +66,17 @@ class Point:
     min: float
     max: float
     samples: int
+
+
+@dataclass(frozen=True, slots=True)
+class HourlyIncrease:
+    """How much a cumulative counter (`energy_wh_total`) grew within one hour."""
+
+    home_id: UUID
+    device_id: str
+    hour: datetime
+    increase: float
+
+
+# How far before a window to look for the sample each device's first delta starts from.
+COUNTER_LOOKBACK = timedelta(hours=6)

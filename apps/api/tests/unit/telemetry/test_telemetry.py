@@ -10,6 +10,7 @@ from smarthome.modules.telemetry.application.buffer import TelemetryBuffer
 from smarthome.modules.telemetry.application.services import TelemetryIngest, TelemetryQueries
 from smarthome.modules.telemetry.domain.errors import InvalidRange
 from smarthome.modules.telemetry.domain.model import (
+    HourlyIncrease,
     Point,
     Reading,
     Resolution,
@@ -256,6 +257,10 @@ async def test_a_flooding_device_is_quarantined_once_and_its_traffic_dropped(
 
 class StubQueries:
     async def series(self, **kw: Any) -> list[Point]:
+        self.kw = kw
+        return []
+
+    async def hourly_increase(self, **kw: Any) -> list[HourlyIncrease]:
         self.kw = kw
         return []
 

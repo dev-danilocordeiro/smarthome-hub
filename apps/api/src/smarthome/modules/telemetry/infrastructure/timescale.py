@@ -6,7 +6,13 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from smarthome.modules.telemetry.domain.model import Point, Reading, Resolution
+from smarthome.modules.telemetry.domain.model import (
+    COUNTER_LOOKBACK,
+    HourlyIncrease,
+    Point,
+    Reading,
+    Resolution,
+)
 
 # One round trip per batch: arrays in, rows out, duplicates skipped by the unique key.
 INSERT_BATCH = text(
@@ -45,6 +51,22 @@ AGGREGATE_SERIES = {
         " AND bucket >= :start AND bucket < :end ORDER BY bucket"
     ),
 }
+
+# Deltas between consecutive samples of a cumulative counter, summed per hour. A sample
+# lower than the one before means the counter restarted from zero (reboot), so the new
+# value itself is what was consumed since. The window starts COUNTER_LOOKBACK early so the
+# first sample inside it has a predecessor; a gap longer than that loses its delta.
+HOURLY_INCREASE = text(
+    "WITH samples AS ("
+    " SELECT home_id, device_id, time, value,"
+    " lag(value) OVER (PARTITION BY device_id ORDER BY time) AS previous"
+    " FROM telemetry.readings"
+    " WHERE metric = :metric AND time >= :lookback AND time < :end)"
+    " SELECT home_id, device_id, time_bucket(INTERVAL '1 hour', time) AS hour,"
+    " sum(CASE WHEN value >= previous THEN value - previous ELSE value END) AS increase"
+    " FROM samples WHERE time >= :start AND previous IS NOT NULL"
+    " GROUP BY home_id, device_id, hour ORDER BY hour, device_id"
+)
 
 RETENTION_TARGETS = ("telemetry.readings", "telemetry.readings_1m", "telemetry.readings_1h")
 
@@ -97,6 +119,21 @@ class TimescaleReadings:
                 Point(time=r.time, avg=r.avg, min=r.min, max=r.max, samples=int(r.samples))
                 for r in rows
             ]
+
+    async def hourly_increase(
+        self, *, metric: str, start: datetime, end: datetime
+    ) -> list[HourlyIncrease]:
+        async with self._engine.connect() as conn:
+            rows = await conn.execute(
+                HOURLY_INCREASE,
+                {
+                    "metric": metric,
+                    "lookback": start - COUNTER_LOOKBACK,
+                    "start": start,
+                    "end": end,
+                },
+            )
+            return [HourlyIncrease(r.home_id, r.device_id, r.hour, float(r.increase)) for r in rows]
 
 
 async def apply_retention(engine: AsyncEngine, days: dict[str, int]) -> None:

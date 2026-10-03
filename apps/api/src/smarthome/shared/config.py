@@ -107,6 +107,9 @@ class Settings(BaseSettings):
     automation_timer_interval_s: float = Field(default=1.0, gt=0)
     automation_run_retention_days: int = Field(default=30, ge=1)
 
+    # Energy (ADR 0012): how often counter readings are folded into hourly consumption.
+    energy_rollup_interval_s: float = Field(default=60.0, gt=0)
+
     # Live WebSocket (ADR 0011): how often an open socket re-checks session and membership.
     live_recheck_interval_s: float = Field(default=60.0, gt=0)
 

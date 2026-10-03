@@ -5,6 +5,7 @@ Background work over the same modules as the API:
 - the command sweeper: settles commands no device answered in time;
 - the automation engine: device events (Redis stream, consumer group), hold timers and
   schedules (ADR 0010);
+- the energy rollup: counter readings into hourly consumption (ADR 0012);
 - housekeeping: processed outbox messages, old automation runs, interrupted runs.
 
 Plain asyncio loops, no job queue (ADR 0009). Several replicas can run side by side.
@@ -23,6 +24,7 @@ import structlog
 from smarthome.modules.automations import wiring as automations
 from smarthome.modules.commands import wiring as commands
 from smarthome.modules.devices import wiring as devices
+from smarthome.modules.energy import wiring as energy
 from smarthome.modules.telemetry import wiring as telemetry
 from smarthome.shared.clock import SystemClock
 from smarthome.shared.config import Settings, get_settings
@@ -106,6 +108,11 @@ async def run(settings: Settings) -> None:
             handler=engine_service.handle_event,
             block_ms=STREAM_BLOCK_MS,
         )
+        rollup = energy.build_rollup(
+            engine=engine,
+            telemetry=telemetry.build_queries(engine=engine, redis=redis),
+            clock=clock,
+        )
         run_retention = timedelta(days=settings.automation_run_retention_days)
 
         stop = asyncio.Event()
@@ -162,6 +169,14 @@ async def run(settings: Settings) -> None:
                     lambda: engine_service.purge_runs(older_than=run_retention),
                     stop,
                     name="purge_automation_runs",
+                )
+            )
+            tasks.create_task(
+                every(
+                    settings.energy_rollup_interval_s,
+                    rollup.run_once,
+                    stop,
+                    name="energy_rollup",
                 )
             )
             tasks.create_task(every(5, heartbeat, stop, name="heartbeat"))
