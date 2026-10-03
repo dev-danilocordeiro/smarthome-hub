@@ -182,6 +182,13 @@ class DevicesService:
         assert twin is not None  # created with the device  # noqa: S101
         return DeviceView(device, twin)
 
+    async def live(
+        self, home_id: UUID, *, scope: frozenset[str] | None = None
+    ) -> list[tuple[Device, dict[str, Any]]]:
+        """Each device with its live view (presence, reported state) from the read model."""
+        devices = await self.list_devices(home_id, scope=scope)
+        return [(d, await self._live.get(d.id)) for d in devices]
+
     async def is_active(self, home_id: UUID, device_id: str) -> bool:
         async with self._uow() as uow:
             device = await uow.devices.get(device_id)

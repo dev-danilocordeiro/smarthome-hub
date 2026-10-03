@@ -111,6 +111,17 @@ lint-imports: ## Check module boundaries (import-linter)
 	python3 scripts/gen_import_contracts.py --check
 	$(API) lint-imports
 
+.PHONY: gen-client
+gen-client: ## Export the OpenAPI document and regenerate the web app's TypeScript types
+	apps/api/.venv/bin/python scripts/export_openapi.py
+	npm run -w packages/contracts generate
+
+.PHONY: contracts-check
+contracts-check: ## Fail if packages/contracts is stale (run `make gen-client`)
+	apps/api/.venv/bin/python scripts/export_openapi.py --check
+	npm run -s -w packages/contracts generate
+	git diff --exit-code -- packages/contracts/src
+
 .PHONY: fmt
 fmt: ## Format Python and fix autofixable lint
 	$(RUFF) format .
@@ -142,7 +153,7 @@ check-infra: .env ## Validate compose, collector, Prometheus, Tempo, Loki, dashb
 	docker run --rm -v $(CURDIR):/repo -w /repo rhysd/actionlint:1.7.12 -color=false
 
 .PHONY: check
-check: lint typecheck ## Every static gate CI runs (plus check-infra, which needs Docker)
+check: lint typecheck contracts-check ## Every static gate CI runs (plus check-infra, which needs Docker)
 
 # --- Tests -------------------------------------------------------------------
 

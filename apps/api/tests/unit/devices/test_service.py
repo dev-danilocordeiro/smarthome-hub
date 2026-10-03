@@ -148,6 +148,12 @@ class FakeLive:
     async def forget(self, device_id: str) -> None:
         self.presence.pop(device_id, None)
 
+    async def get(self, device_id: str) -> dict[str, Any]:
+        return {
+            "online": self.presence.get(device_id, False),
+            "reported": self.reported.get(device_id),
+        }
+
 
 @pytest.fixture
 def store() -> Store:

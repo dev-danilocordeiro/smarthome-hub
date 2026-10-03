@@ -107,6 +107,9 @@ class Settings(BaseSettings):
     automation_timer_interval_s: float = Field(default=1.0, gt=0)
     automation_run_retention_days: int = Field(default=30, ge=1)
 
+    # Live WebSocket (ADR 0011): how often an open socket re-checks session and membership.
+    live_recheck_interval_s: float = Field(default=60.0, gt=0)
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

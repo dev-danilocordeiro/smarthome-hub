@@ -114,6 +114,56 @@ class RedisEventPublisher:
         published_counter.add(1, {"kind": event.kind.value, "outcome": "ok"})
 
 
+class StreamTail:
+    """Every event from now on, in every process that runs one (no consumer group).
+
+    For fan-out to live clients: each API replica needs every event of the homes its
+    sockets watch. Nothing is acknowledged; an event missed while Redis was unreachable
+    is replaced by the next one for that device, and clients reload a snapshot when they
+    reconnect.
+    """
+
+    def __init__(
+        self,
+        redis: Redis,
+        handler: Callable[[DeviceEvent], Awaitable[object]],
+        *,
+        stream: str = DEVICE_EVENTS,
+        batch_size: int = 500,
+        block_ms: int = 1000,
+        retry_delay_s: float = 1.0,
+    ) -> None:
+        self._redis = redis
+        self._handler = handler
+        self._stream = stream
+        self._batch = batch_size
+        self._block_ms = block_ms
+        self._retry_delay_s = retry_delay_s
+
+    async def run(self, stop: asyncio.Event) -> None:
+        last = "$"
+        while not stop.is_set():
+            try:
+                response: Any = await self._redis.xread(
+                    {self._stream: last}, count=self._batch, block=self._block_ms
+                )
+            except (RedisError, OSError) as exc:
+                log.warning("event_tail_retrying", error=str(exc))
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(stop.wait(), timeout=self._retry_delay_s)
+                continue
+            for entry_id, fields in response[0][1] if response else []:
+                last = entry_id
+                try:
+                    event, _ = decode(fields)
+                except InvalidEvent:
+                    continue
+                try:
+                    await self._handler(event)
+                except Exception:
+                    log.exception("event_tail_handler_failed", entry_id=entry_id)
+
+
 class StreamConsumer:
     """One member of a consumer group.
 

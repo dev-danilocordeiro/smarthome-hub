@@ -4,18 +4,19 @@ from fastapi import FastAPI
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from smarthome.modules.devices.api import errors, routes
+from smarthome.modules.devices.api import errors, live, routes
 from smarthome.modules.devices.api.container import DevicesModule
 from smarthome.modules.devices.application.services import DevicesService
 from smarthome.modules.devices.infrastructure.broker_admin import BrokerAdmin, BrokerConnection
 from smarthome.modules.devices.infrastructure.live_state import RedisLiveState
 from smarthome.modules.devices.infrastructure.persistence import PostgresDevicesUnitOfWork
+from smarthome.modules.telemetry.public import TelemetryQueries
 from smarthome.shared.clock import Clock
 from smarthome.shared.config import Settings
 from smarthome.shared.events import EventPublisher
 from smarthome.shared.http.rate_limit import RateLimiter
 
-__all__ = ["DevicesModule", "broker_admin", "build", "build_service", "mount"]
+__all__ = ["DevicesModule", "broker_admin", "build", "build_live", "build_service", "mount"]
 
 
 def broker_admin(settings: Settings) -> BrokerAdmin:
@@ -56,6 +57,19 @@ def build(settings: Settings, *, engine: AsyncEngine, redis: Redis, clock: Clock
     )
 
 
+def build_live(
+    settings: Settings, *, devices: DevicesService, telemetry: TelemetryQueries
+) -> live.LiveModule:
+    """The live WebSocket's state; feed `module.hub.dispatch` from a `StreamTail`."""
+    return live.LiveModule(
+        hub=live.LiveHub(),
+        devices=devices,
+        telemetry=telemetry,
+        recheck_every_s=settings.live_recheck_interval_s,
+    )
+
+
 def mount(app: FastAPI) -> None:
     app.include_router(routes.router)
+    app.include_router(live.router)
     errors.register(app)

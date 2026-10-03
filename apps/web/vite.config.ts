@@ -7,8 +7,12 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // Same-origin in dev, mirroring the BFF setup that arrives in phase 3.
-      "/api": { target: "http://localhost:8000", rewrite: (path) => path.replace(/^\/api/, "") },
+      // Same origin as the BFF in production. `ws: true` carries the live WebSocket.
+      "/api": {
+        target: "http://localhost:8000",
+        ws: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
     },
   },
   test: {

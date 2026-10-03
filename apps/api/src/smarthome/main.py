@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -16,6 +17,7 @@ from smarthome.shared.diagnostics.router import router as diagnostics_router
 from smarthome.shared.health.router import router as health_router
 from smarthome.shared.http.security_headers import SecurityHeadersMiddleware
 from smarthome.shared.infrastructure.db import create_engine
+from smarthome.shared.infrastructure.event_stream import StreamTail
 from smarthome.shared.infrastructure.redis import create_redis
 from smarthome.shared.logging import configure_logging
 from smarthome.shared.observability import (
@@ -27,6 +29,8 @@ from smarthome.shared.observability import (
 )
 
 log = structlog.get_logger(__name__)
+
+LIVE_BLOCK_S = 1.0
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -78,6 +82,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             commands=app.state.commands.service,
             clock=SystemClock(),
         )
+        app.state.live = devices.build_live(
+            resolved, devices=app.state.devices.service, telemetry=app.state.telemetry.queries
+        )
+        # Its own connection: XREAD blocks. Every API replica tails the stream, so each
+        # one can serve the live sockets of any home (ADR 0011).
+        stream_redis = create_redis(resolved, socket_timeout=LIVE_BLOCK_S + 5)
+        live_stop = asyncio.Event()
+        live_tail = asyncio.create_task(
+            StreamTail(
+                stream_redis, app.state.live.hub.dispatch, block_ms=int(LIVE_BLOCK_S * 1000)
+            ).run(live_stop)
+        )
         instrument_engine(app.state.db_engine)
         instrument_redis()
         if providers is not None:
@@ -91,6 +107,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             yield
         finally:
+            live_stop.set()
+            await live_tail
+            await stream_redis.aclose()
             await app.state.http.aclose()
             await app.state.redis.aclose()
             await app.state.db_engine.dispose()

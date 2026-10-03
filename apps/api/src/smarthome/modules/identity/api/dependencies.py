@@ -7,10 +7,11 @@ from typing import Annotated
 from urllib.parse import urlsplit
 from uuid import UUID
 
-from fastapi import Depends, Request
+from fastapi import Depends, Request, WebSocket, WebSocketException, status
 
 from smarthome.modules.identity.api.container import IdentityModule
 from smarthome.modules.identity.application.services import HomeAccess
+from smarthome.modules.identity.domain.errors import IdentityError
 from smarthome.modules.identity.domain.model import HomeId, Permission
 from smarthome.modules.identity.domain.principal import Principal
 from smarthome.modules.identity.infrastructure.sessions import Session
@@ -119,3 +120,54 @@ def require_device_access(permission: Permission) -> Callable[..., Awaitable[Hom
         )
 
     return dependency
+
+
+# --- WebSockets -------------------------------------------------------------------------
+# Browsers send cookies on a WebSocket handshake but no CSRF header, and the same-origin
+# policy does not apply to it: any page could open a socket with the user's cookie
+# (cross-site WebSocket hijacking). The Origin header, which a page cannot forge, must
+# be one we serve. Close codes 44xx mirror the HTTP status (private range 4000-4999).
+
+WS_UNAUTHORIZED = 4401
+WS_FORBIDDEN = 4403
+
+
+async def websocket_principal(websocket: WebSocket) -> Principal:
+    module: IdentityModule = websocket.app.state.identity
+    settings = module.settings
+    allowed = {_origin(settings.web_app_url), _origin(settings.bff_public_url)}
+    if websocket.headers.get("origin") not in allowed:
+        raise WebSocketException(status.WS_1008_POLICY_VIOLATION, "origin not allowed")
+    session_id = websocket.cookies.get(SESSION_COOKIE)
+    session = await module.sessions.resolve(session_id) if session_id else None
+    if session is None:
+        raise WebSocketException(WS_UNAUTHORIZED, "not signed in")
+    return session.principal()
+
+
+def require_websocket_home_access(
+    permission: Permission,
+) -> Callable[..., Awaitable[HomeAccess]]:
+    """Dependency for `/homes/{home_id}/...` WebSocket routes in any module."""
+
+    async def dependency(home_id: UUID, websocket: WebSocket) -> HomeAccess:
+        principal = await websocket_principal(websocket)
+        module: IdentityModule = websocket.app.state.identity
+        try:
+            return await module.service.access(principal, HomeId(home_id), permission)
+        except IdentityError as exc:
+            raise WebSocketException(WS_FORBIDDEN, "no access to this home") from exc
+
+    return dependency
+
+
+async def recheck_websocket_access(
+    websocket: WebSocket, home_id: UUID, permission: Permission
+) -> WebSocketException | None:
+    """For long-lived sockets: None while the session and membership still hold,
+    otherwise the reason to close (signed out, session expired, membership revoked)."""
+    try:
+        await require_websocket_home_access(permission)(home_id, websocket)
+    except WebSocketException as exc:
+        return exc
+    return None
