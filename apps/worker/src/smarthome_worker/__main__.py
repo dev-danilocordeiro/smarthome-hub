@@ -27,7 +27,7 @@ from smarthome.modules.telemetry import wiring as telemetry
 from smarthome.shared.clock import SystemClock
 from smarthome.shared.config import Settings, get_settings
 from smarthome.shared.infrastructure.db import create_engine
-from smarthome.shared.infrastructure.event_stream import StreamConsumer
+from smarthome.shared.infrastructure.event_stream import RedisEventPublisher, StreamConsumer
 from smarthome.shared.infrastructure.mqtt_publisher import MqttPublisher, PublisherConfig
 from smarthome.shared.infrastructure.outbox import OutboxRelay
 from smarthome.shared.infrastructure.redis import create_redis
@@ -84,8 +84,10 @@ async def run(settings: Settings) -> None:
             poll_interval_s=settings.outbox_poll_interval_s,
         )
         device_service = devices.build_service(settings, engine=engine, redis=redis, clock=clock)
+        # Timed-out commands are announced to live clients like acked ones.
+        events = RedisEventPublisher(redis, maxlen=settings.automation_events_stream_maxlen)
         command_service = commands.build_service(
-            settings, engine=engine, devices=device_service, clock=clock
+            settings, engine=engine, devices=device_service, clock=clock, events=events
         )
         retention = timedelta(hours=settings.outbox_retention_hours)
         engine_service = automations.build_engine(
@@ -97,7 +99,7 @@ async def run(settings: Settings) -> None:
             commands=command_service,
             clock=clock,
         )
-        events = StreamConsumer(
+        consumer = StreamConsumer(
             stream_redis,
             group="automations",
             consumer=f"worker-{socket.gethostname()}",
@@ -129,7 +131,7 @@ async def run(settings: Settings) -> None:
                     name="purge_outbox",
                 )
             )
-            tasks.create_task(events.run(stop))
+            tasks.create_task(consumer.run(stop))
             tasks.create_task(
                 every(
                     settings.automation_timer_interval_s,

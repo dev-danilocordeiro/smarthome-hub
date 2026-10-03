@@ -1,5 +1,5 @@
 from dataclasses import replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -28,6 +28,12 @@ from smarthome.modules.commands.domain.model import (
 )
 from smarthome.shared.audit import AuditEvent
 from smarthome.shared.clock import Clock
+from smarthome.shared.events import (
+    DeviceEvent,
+    DeviceEventKind,
+    EventPublisher,
+    NullEventPublisher,
+)
 from smarthome.shared.outbox import OutboxMessage
 
 log = structlog.get_logger(__name__)
@@ -61,11 +67,13 @@ class CommandsService:
         clock: Clock,
         *,
         ack_grace: timedelta = timedelta(seconds=10),
+        events: EventPublisher | None = None,
     ) -> None:
         self._uow = uow
         self._devices = devices
         self._clock = clock
         self._ack_grace = ack_grace
+        self._events = events or NullEventPublisher()
 
     async def target(self, home_id: UUID, device_id: str) -> Target:
         target = await self._devices.target(home_id, device_id)
@@ -184,6 +192,7 @@ class CommandsService:
             await uow.commands.save(updated)
             await self._settled(uow, updated)
             await uow.commit()
+        await self._publish(updated, at=now)
         return True
 
     async def expire_overdue(self) -> int:
@@ -198,9 +207,27 @@ class CommandsService:
                 await uow.commands.save(command)
                 await self._settled(uow, command)
             await uow.commit()
+        for command in expired:
+            await self._publish(command, at=now)
         if expired:
             log.info("commands_timed_out", count=len(expired))
         return len(expired)
+
+    async def _publish(self, command: Command, *, at: datetime) -> None:
+        """Tell live clients (the app) what became of a command."""
+        await self._events.publish(
+            DeviceEvent(
+                command.home_id,
+                command.device_id,
+                DeviceEventKind.COMMAND,
+                at,
+                {
+                    "command_id": str(command.id),
+                    "status": command.status.value,
+                    "reason": command.reason,
+                },
+            )
+        )
 
     async def _settled(self, uow: CommandsUnitOfWork, command: Command) -> None:
         if not command.settled or command.completed_at is None:

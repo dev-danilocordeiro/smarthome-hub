@@ -10,8 +10,10 @@ Other modules authenticate and authorize through these names only:
 
 from smarthome.modules.identity.api.dependencies import (
     CurrentPrincipal,
+    recheck_websocket_access,
     require_device_access,
     require_home_access,
+    require_websocket_home_access,
 )
 from smarthome.modules.identity.application.services import HomeAccess
 from smarthome.modules.identity.domain.model import HomeId, Permission, Role, UserId
@@ -25,6 +27,8 @@ __all__ = [
     "Principal",
     "Role",
     "UserId",
+    "recheck_websocket_access",
     "require_device_access",
     "require_home_access",
+    "require_websocket_home_access",
 ]

@@ -1,0 +1,13 @@
+{
+  "name": "Smart Home Hub",
+  "short_name": "Home Hub",
+  "description": "Live floor plan, automations and history for your homes.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#11151b",
+  "theme_color": "#2f6fde",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

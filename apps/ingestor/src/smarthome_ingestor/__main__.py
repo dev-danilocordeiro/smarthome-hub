@@ -61,7 +61,7 @@ async def run(settings: Settings) -> None:
             settings, engine=engine, redis=redis, clock=clock, events=events
         )
         command_service = commands.build_service(
-            settings, engine=engine, devices=service, clock=clock
+            settings, engine=engine, devices=service, clock=clock, events=events
         )
         ingest, buffer = telemetry.build_ingest(
             settings, engine=engine, redis=redis, devices=service, events=events

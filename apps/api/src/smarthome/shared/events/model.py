@@ -9,6 +9,7 @@ class DeviceEventKind(StrEnum):
     STATE = "state"  # data: the full reported state
     PRESENCE = "presence"  # data: {"online": bool}
     TELEMETRY = "telemetry"  # data: the readings of one message
+    COMMAND = "command"  # data: {"command_id", "status", "reason"} once an outcome is known
 
 
 @dataclass(frozen=True, slots=True)

@@ -13,18 +13,26 @@ from smarthome.modules.commands.infrastructure.persistence import PostgresComman
 from smarthome.modules.devices.public import DevicesService
 from smarthome.shared.clock import Clock
 from smarthome.shared.config import Settings
+from smarthome.shared.events import EventPublisher
 
 __all__ = ["CommandsModule", "build", "build_service", "mount"]
 
 
 def build_service(
-    settings: Settings, *, engine: AsyncEngine, devices: DevicesService, clock: Clock
+    settings: Settings,
+    *,
+    engine: AsyncEngine,
+    devices: DevicesService,
+    clock: Clock,
+    events: EventPublisher | None = None,
 ) -> CommandsService:
+    """`events`: where command outcomes are announced (ingestor and worker pass one)."""
     return CommandsService(
         lambda: PostgresCommandsUnitOfWork(engine),
         DevicesModuleAdapter(devices),
         clock,
         ack_grace=timedelta(seconds=settings.command_ack_grace_s),
+        events=events,
     )
 
 

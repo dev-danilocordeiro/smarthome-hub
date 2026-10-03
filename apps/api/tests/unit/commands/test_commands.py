@@ -28,6 +28,7 @@ from smarthome.modules.commands.domain.model import (
     requirements,
 )
 from smarthome.shared.audit import AuditEvent
+from smarthome.shared.events import DeviceEvent, DeviceEventKind
 from smarthome.shared.outbox import OutboxMessage
 
 NOW = datetime(2026, 10, 2, 12, 0, tzinfo=UTC)
@@ -276,12 +277,21 @@ class Clock:
         return self.at
 
 
+class Events:
+    def __init__(self) -> None:
+        self.published: list[DeviceEvent] = []
+
+    async def publish(self, event: DeviceEvent) -> None:
+        self.published.append(event)
+
+
 @dataclass
 class World:
     store: Store
     devices: FakeDevices
     clock: Clock
     service: CommandsService
+    events: Events
 
 
 @pytest.fixture
@@ -294,8 +304,11 @@ def world() -> World:
             "plug-q": Target("plug-q", HOME, DeviceKind.PLUG, accepts_commands=False),
         }
     )
-    service = CommandsService(lambda: UoW(store), devices, clock, ack_grace=timedelta(seconds=10))
-    return World(store, devices, clock, service)
+    events = Events()
+    service = CommandsService(
+        lambda: UoW(store), devices, clock, ack_grace=timedelta(seconds=10), events=events
+    )
+    return World(store, devices, clock, service, events)
 
 
 async def issue(world: World, device_id: str = "light-1", **kw: Any) -> Command:
@@ -388,6 +401,26 @@ async def test_the_sweeper_times_out_only_commands_past_deadline_and_grace(world
     assert world.store.commands[old.id].status is CommandStatus.TIMED_OUT
     assert world.store.commands[fresh.id].status is CommandStatus.PENDING
     assert await world.service.expire_overdue() == 0
+
+
+async def test_outcomes_are_announced_to_live_clients_and_duplicates_are_not(
+    world: World,
+) -> None:
+    acked = await issue(world)
+    silent = await issue(world, ttl=timedelta(seconds=5))
+
+    for ack in (AckStatus.RECEIVED, AckStatus.APPLIED, AckStatus.APPLIED):
+        await world.service.record_ack(
+            home_id=HOME, device_id="light-1", command_id=acked.id, ack=ack, reason=None
+        )
+    world.clock.at = NOW + timedelta(minutes=1)
+    await world.service.expire_overdue()
+
+    assert [(e.kind, e.data["command_id"], e.data["status"]) for e in world.events.published] == [
+        (DeviceEventKind.COMMAND, str(acked.id), "delivered"),
+        (DeviceEventKind.COMMAND, str(acked.id), "acknowledged"),
+        (DeviceEventKind.COMMAND, str(silent.id), "timed_out"),
+    ]
 
 
 async def test_a_late_ack_does_not_revive_a_timed_out_command(world: World) -> None:

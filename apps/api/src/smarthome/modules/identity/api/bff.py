@@ -150,7 +150,7 @@ async def current_session(
     )
 
 
-@router.post("/logout")
+@router.post("/logout", response_model=LogoutOut)
 async def logout(
     module: Identity,
     context: Annotated[SessionContext, Depends(csrf_protected_session)],

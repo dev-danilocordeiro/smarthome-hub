@@ -28,6 +28,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: TypeScript types match the OpenAPI document
+        run: |
+          npm run -s -w packages/contracts generate
+          git diff --exit-code -- packages/contracts/src
       - run: npm run -w apps/web typecheck
       - run: npm run -w apps/web lint
       - run: npm run -w apps/web test

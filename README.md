@@ -4,7 +4,7 @@ A multi-tenant smart home hub built to show **event-driven design, real-time
 telemetry, time-series storage, device security and observability**. Real hardware
 is optional: a simulator speaks the same MQTT protocol a real ESP32 would.
 
-> **Status:** phase 8 of 11 (automations). Most of the product below is still on the roadmap.
+> **Status:** phase 9 of 11 (web app). Most of the product below is still on the roadmap.
 > [Versão em português](README.pt-BR.md).
 
 ## What it will do
@@ -79,12 +79,22 @@ Override them in `.env`.
 ## Sign in
 
 ```bash
-make up && make web-dev      # the web app proxies /api to the BFF
+make up && make simulate     # in one terminal: the stack and a simulated fleet
+make web-dev                 # in another: the web app, proxying /api (and its WebSocket) to the BFF
 ```
 
 Open http://localhost:5173 and sign in. Dev users (password `smarthome-dev-1`):
 `alice`, `bob`, `carol`, `dave`. Any of them can create a home and invite the others
-as resident, guest (with expiry and device scope) or viewer.
+as resident, guest (with expiry and device scope) or viewer. The simulated homes belong
+to alice.
+
+The web app shows each home as a **live floor plan**: rooms with their devices, updated
+over a WebSocket as devices report. Select a device to control it, see its reported
+state, latest readings, history chart and recent commands. The *Automations* tab edits
+automations (with templates, server-side validation, a dry run over the last 24 h and
+recent runs) and the *Scenes* tab activates scenes or captures one from the devices'
+current state. It installs as a PWA. How it works:
+[ADR 0011](docs/adr/0011-web-app-live-updates-and-typed-client.md).
 
 How it works: the API is a **backend-for-frontend**. The browser only ever holds an
 `HttpOnly; Secure; SameSite=Strict` session cookie, tokens stay server-side, refresh
@@ -197,7 +207,8 @@ How it is wired: [ADR 0002](docs/adr/0002-observability-pipeline.md).
 
 ```bash
 make install     # poetry install in every Python app + npm ci
-make check       # ruff, import-linter, mypy --strict, eslint, tsc
+make check       # ruff, import-linter, mypy --strict, eslint, tsc, OpenAPI/TS types up to date
+make gen-client  # after changing the API: re-export OpenAPI and regenerate the TS types
 make check-infra # validates compose, collector, Prometheus, Tempo, Loki and dashboards
 make test-unit   # no containers
 make test-it     # real TimescaleDB + Redis via Testcontainers
@@ -215,7 +226,7 @@ apps/
   web/          React + TypeScript (Vite)
 packages/
   device-protocol/   MQTT topics and message schemas
-  contracts/         OpenAPI + generated TS client
+  contracts/         OpenAPI document + TypeScript types generated from it
 infra/          docker compose and service configs
 docs/adr/       architecture decision records (MADR)
 scripts/        repo tooling (import contract generator)
@@ -231,6 +242,6 @@ scripts/        repo tooling (import contract generator)
 6. ✅ Telemetry: batched ingestion, hypertables, continuous aggregates
 7. ✅ Commands: ack, timeout, idempotency, trace propagation over MQTT
 8. ✅ Automations: DSL, rule engine, scenes, schedules, dry run
-9. Frontend: live floor plan, automation editor, history, PWA
+9. ✅ Frontend: live floor plan, automation editor, history, PWA
 10. Energy, notifications, dashboards, alerts, load test
 11. Diagrams, remaining ADRs, threat model, ASVS checklist, E2E. Then a real ESP32.
