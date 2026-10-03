@@ -24,6 +24,12 @@ from smarthome.modules.devices.domain.model import (
 )
 from smarthome.shared.audit import AuditEvent
 from smarthome.shared.clock import Clock
+from smarthome.shared.events import (
+    DeviceEvent,
+    DeviceEventKind,
+    EventPublisher,
+    NullEventPublisher,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -42,12 +48,19 @@ class DeviceView:
 
 class DevicesService:
     def __init__(
-        self, uow: DevicesUnitOfWorkFactory, broker: Broker, live: LiveState, clock: Clock
+        self,
+        uow: DevicesUnitOfWorkFactory,
+        broker: Broker,
+        live: LiveState,
+        clock: Clock,
+        *,
+        events: EventPublisher | None = None,
     ) -> None:
         self._uow = uow
         self._broker = broker
         self._live = live
         self._clock = clock
+        self._events = events or NullEventPublisher()
 
     # --- Pairing --------------------------------------------------------------------
 
@@ -236,6 +249,9 @@ class DevicesService:
             await uow.devices.save(updated)
             await uow.commit()
         await self._live.set_presence(device_id, online=online, at=at)
+        await self._events.publish(
+            DeviceEvent(home_id, device_id, DeviceEventKind.PRESENCE, at, {"online": online})
+        )
         return True
 
     async def record_reported_state(
@@ -251,6 +267,9 @@ class DevicesService:
             await uow.twins.save_reported(updated)
             await uow.commit()
         await self._live.set_reported(device_id, reported, at=at)
+        await self._events.publish(
+            DeviceEvent(home_id, device_id, DeviceEventKind.STATE, at, dict(reported))
+        )
         return True
 
     # --- Commands (called by the commands module) -----------------------------------

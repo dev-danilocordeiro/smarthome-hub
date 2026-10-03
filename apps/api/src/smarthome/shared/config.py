@@ -98,6 +98,15 @@ class Settings(BaseSettings):
     outbox_poll_interval_s: float = Field(default=1.0, gt=0)
     outbox_retention_hours: int = Field(default=24, ge=1)
 
+    # Automations (ADR 0010).
+    automation_events_stream_maxlen: int = Field(default=100_000, ge=1_000)
+    automation_max_chain_depth: int = Field(default=5, ge=1)
+    automation_max_runs_per_minute: int = Field(default=20, ge=1)
+    # A schedule slot more than this late (worker was down) is skipped, not run.
+    automation_misfire_grace_s: int = Field(default=300, ge=1)
+    automation_timer_interval_s: float = Field(default=1.0, gt=0)
+    automation_run_retention_days: int = Field(default=30, ge=1)
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

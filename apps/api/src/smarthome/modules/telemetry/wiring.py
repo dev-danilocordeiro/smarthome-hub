@@ -17,15 +17,20 @@ from smarthome.modules.telemetry.infrastructure.redis_stores import (
 )
 from smarthome.modules.telemetry.infrastructure.timescale import TimescaleReadings, apply_retention
 from smarthome.shared.config import Settings
+from smarthome.shared.events import EventPublisher
 
-__all__ = ["apply_configured_retention", "build", "build_ingest", "mount"]
+__all__ = ["apply_configured_retention", "build", "build_ingest", "build_queries", "mount"]
+
+
+def build_queries(*, engine: AsyncEngine, redis: Redis) -> TelemetryQueries:
+    return TelemetryQueries(TimescaleReadings(engine), RedisLatestReadings(redis))
 
 
 def build(
     settings: Settings, *, engine: AsyncEngine, redis: Redis, devices: DevicesService
 ) -> TelemetryModule:
     return TelemetryModule(
-        queries=TelemetryQueries(TimescaleReadings(engine), RedisLatestReadings(redis)),
+        queries=build_queries(engine=engine, redis=redis),
         devices=devices,
         redis=redis,
         settings=settings,
@@ -33,7 +38,12 @@ def build(
 
 
 def build_ingest(
-    settings: Settings, *, engine: AsyncEngine, redis: Redis, devices: DevicesService
+    settings: Settings,
+    *,
+    engine: AsyncEngine,
+    redis: Redis,
+    devices: DevicesService,
+    events: EventPublisher | None = None,
 ) -> tuple[TelemetryIngest, TelemetryBuffer]:
     buffer = TelemetryBuffer(
         TimescaleReadings(engine).write,
@@ -47,6 +57,7 @@ def build_ingest(
         dedup=RedisDeduplicator(redis),
         flood=RedisFloodGuard(redis, max_per_minute=settings.telemetry_max_messages_per_minute),
         devices=CachedDeviceDirectory(devices),
+        events=events,
     )
     return ingest, buffer
 

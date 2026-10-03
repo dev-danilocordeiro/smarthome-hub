@@ -4,7 +4,7 @@ Mosquitto, with the worker's relay and the ingestor's consumer running."""
 import asyncio
 import json
 import secrets
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
@@ -23,12 +23,9 @@ from smarthome.modules.commands import wiring as commands
 from smarthome.modules.commands.api.mqtt import handlers as command_handlers
 from smarthome.modules.devices import wiring as devices
 from smarthome.modules.devices.application.services import DevicesService
-from smarthome.modules.identity.api.dependencies import SESSION_COOKIE
 from smarthome.modules.identity.application.services import IdentityService
-from smarthome.modules.identity.domain.model import HomeId, Role, UserId
-from smarthome.modules.identity.domain.principal import Principal
+from smarthome.modules.identity.domain.model import HomeId, Role
 from smarthome.modules.identity.infrastructure.persistence import PostgresUnitOfWork
-from smarthome.modules.identity.infrastructure.sessions import RedisSessionStore, Session
 from smarthome.shared.clock import SystemClock
 from smarthome.shared.config import Settings
 from smarthome.shared.infrastructure.mqtt_consumer import (
@@ -39,49 +36,8 @@ from smarthome.shared.infrastructure.mqtt_consumer import (
 )
 from smarthome.shared.infrastructure.mqtt_publisher import MqttPublisher, PublisherConfig
 from smarthome.shared.infrastructure.outbox import OutboxRelay
+from tests.integration.helpers import Member, eventually, sign_in
 from tests.integration.mqtt_broker import Broker
-
-
-async def eventually(check: Callable[[], Awaitable[bool]], within_s: float = 10.0) -> None:
-    async with asyncio.timeout(within_s):
-        while not await check():  # noqa: ASYNC110 - state owned by other tasks
-            await asyncio.sleep(0.1)
-
-
-@dataclass(frozen=True)
-class Member:
-    principal: Principal
-    headers: dict[str, str]
-
-
-async def sign_in(
-    redis: Redis, user_id: str, *, authenticated_ago: timedelta = timedelta(seconds=10)
-) -> Member:
-    """A BFF session as the login callback would leave it, without the IdP round trip."""
-    now = SystemClock().now()
-    principal = Principal(
-        user_id=UserId(user_id),
-        email=None,
-        display_name=user_id.title(),
-        authenticated_at=now - authenticated_ago,
-    )
-    session_id, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(16)
-    session = Session(
-        user_id=user_id,
-        email=None,
-        display_name=principal.display_name,
-        authenticated_at=principal.authenticated_at,
-        created_at=now,
-        absolute_expires_at=now + timedelta(hours=1),
-        csrf_token=csrf,
-        access_token="unused",
-        access_expires_at=now + timedelta(hours=1),
-        refresh_token=None,
-        refresh_expires_at=None,
-        id_token=None,
-    )
-    await RedisSessionStore(redis, SystemClock()).save(session_id, session)
-    return Member(principal, {"cookie": f"{SESSION_COOKIE}={session_id}", "x-csrf-token": csrf})
 
 
 @dataclass(frozen=True)
