@@ -2,7 +2,8 @@
 
 Consumes device traffic from the broker and hands each message kind to the module that
 owns it: presence and state to `devices`, telemetry to `telemetry` (batched writes),
-command acks to `commands`.
+command acks to `commands`. What changed is published as device events (Redis stream)
+for the automation engine in the worker.
 Same modules as the API, different entrypoint.
 """
 
@@ -21,6 +22,7 @@ from smarthome.modules.telemetry.api.mqtt import handlers as telemetry_handlers
 from smarthome.shared.clock import SystemClock
 from smarthome.shared.config import Settings, get_settings
 from smarthome.shared.infrastructure.db import create_engine
+from smarthome.shared.infrastructure.event_stream import RedisEventPublisher
 from smarthome.shared.infrastructure.mqtt_consumer import (
     ConsumerConfig,
     DeviceTrafficConsumer,
@@ -53,12 +55,16 @@ async def run(settings: Settings) -> None:
         await ensure_hub_account(settings)
         await telemetry.apply_configured_retention(settings, engine)
         clock = SystemClock()
-        service = devices.build_service(settings, engine=engine, redis=redis, clock=clock)
+        # Changes the ingestor applies become device events for the automation engine.
+        events = RedisEventPublisher(redis, maxlen=settings.automation_events_stream_maxlen)
+        service = devices.build_service(
+            settings, engine=engine, redis=redis, clock=clock, events=events
+        )
         command_service = commands.build_service(
             settings, engine=engine, devices=service, clock=clock
         )
         ingest, buffer = telemetry.build_ingest(
-            settings, engine=engine, redis=redis, devices=service
+            settings, engine=engine, redis=redis, devices=service, events=events
         )
         consumer = DeviceTrafficConsumer(
             ConsumerConfig(

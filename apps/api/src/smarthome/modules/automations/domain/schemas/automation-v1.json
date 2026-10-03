@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smarthome.local/schemas/automations/v1/automation.json",
+  "title": "Automation definition",
+  "description": "When any trigger fires and every condition holds, run the actions in order. See docs/automations.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "triggers", "actions"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "triggers": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": { "$ref": "#/$defs/trigger" }
+    },
+    "conditions": {
+      "type": "array",
+      "maxItems": 10,
+      "items": { "$ref": "#/$defs/condition" },
+      "default": []
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/action" }
+    },
+    "cooldown_s": {
+      "description": "After running, ignore triggers for this long.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 86400,
+      "default": 0
+    }
+  },
+  "$defs": {
+    "device_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+    "op": { "enum": ["eq", "ne", "gt", "gte", "lt", "lte"] },
+    "value": { "type": ["number", "boolean", "string"] },
+    "for_s": {
+      "description": "Fire only after the trigger has held this long.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 86400,
+      "default": 0
+    },
+    "clock_time": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+    "weekdays": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] }
+    },
+    "device_state": {
+      "type": "object",
+      "required": ["type", "device_id", "property", "op", "value"],
+      "properties": {
+        "type": { "const": "device_state" },
+        "device_id": { "$ref": "#/$defs/device_id" },
+        "property": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "op": { "$ref": "#/$defs/op" },
+        "value": { "$ref": "#/$defs/value" }
+      }
+    },
+    "telemetry": {
+      "type": "object",
+      "required": ["type", "device_id", "metric", "op", "value"],
+      "properties": {
+        "type": { "const": "telemetry" },
+        "device_id": { "$ref": "#/$defs/device_id" },
+        "metric": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "op": { "$ref": "#/$defs/op" },
+        "value": { "type": ["number", "boolean"] }
+      }
+    },
+    "presence": {
+      "type": "object",
+      "required": ["type", "device_id", "status"],
+      "properties": {
+        "type": { "const": "presence" },
+        "device_id": { "$ref": "#/$defs/device_id" },
+        "status": { "enum": ["online", "offline"] }
+      }
+    },
+    "trigger": {
+      "oneOf": [
+        {
+          "allOf": [{ "$ref": "#/$defs/device_state" }],
+          "properties": { "type": true, "device_id": true, "property": true, "op": true, "value": true, "for_s": { "$ref": "#/$defs/for_s" } },
+          "additionalProperties": false
+        },
+        {
+          "allOf": [{ "$ref": "#/$defs/telemetry" }],
+          "properties": { "type": true, "device_id": true, "metric": true, "op": true, "value": true, "for_s": { "$ref": "#/$defs/for_s" } },
+          "additionalProperties": false
+        },
+        {
+          "allOf": [{ "$ref": "#/$defs/presence" }],
+          "properties": { "type": true, "device_id": true, "status": true, "for_s": { "$ref": "#/$defs/for_s" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "description": "At a wall-clock time in the home's time zone.",
+          "required": ["type", "at"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "schedule" },
+            "at": { "$ref": "#/$defs/clock_time" },
+            "weekdays": { "$ref": "#/$defs/weekdays" }
+          }
+        }
+      ]
+    },
+    "condition": {
+      "oneOf": [
+        {
+          "allOf": [{ "$ref": "#/$defs/device_state" }],
+          "properties": { "type": true, "device_id": true, "property": true, "op": true, "value": true },
+          "additionalProperties": false
+        },
+        {
+          "allOf": [{ "$ref": "#/$defs/telemetry" }],
+          "properties": {
+            "type": true, "device_id": true, "metric": true, "op": true, "value": true,
+            "max_age_s": {
+              "description": "Ignore a latest reading older than this (the condition fails).",
+              "type": "integer", "minimum": 1, "maximum": 86400, "default": 900
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "allOf": [{ "$ref": "#/$defs/presence" }],
+          "properties": { "type": true, "device_id": true, "status": true },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "description": "Local time within [after, before); wraps midnight when after > before.",
+          "required": ["type"],
+          "minProperties": 2,
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "time" },
+            "after": { "$ref": "#/$defs/clock_time" },
+            "before": { "$ref": "#/$defs/clock_time" },
+            "weekdays": { "$ref": "#/$defs/weekdays" }
+          }
+        }
+      ]
+    },
+    "action": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "device_id", "action"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "command" },
+            "device_id": { "$ref": "#/$defs/device_id" },
+            "action": { "enum": ["set_state", "identify"] },
+            "desired": { "type": "object", "minProperties": 1, "maxProperties": 16 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "scene_id"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "scene" },
+            "scene_id": { "type": "string", "format": "uuid" }
+          }
+        }
+      ]
+    }
+  }
+}

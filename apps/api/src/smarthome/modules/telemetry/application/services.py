@@ -20,6 +20,12 @@ from smarthome.modules.telemetry.domain.model import (
     choose_resolution,
     readings_from_message,
 )
+from smarthome.shared.events import (
+    DeviceEvent,
+    DeviceEventKind,
+    EventPublisher,
+    NullEventPublisher,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -35,7 +41,9 @@ class TelemetryIngest:
         dedup: Deduplicator,
         flood: FloodGuard,
         devices: DeviceDirectory,
+        events: EventPublisher | None = None,
     ) -> None:
+        self._events = events or NullEventPublisher()
         self._buffer = buffer
         self._latest = latest
         self._dedup = dedup
@@ -61,6 +69,16 @@ class TelemetryIngest:
         )
         await self._latest.update(readings)
         await self._buffer.put(readings)
+        if readings:
+            await self._events.publish(
+                DeviceEvent(
+                    home_id,
+                    device_id,
+                    DeviceEventKind.TELEMETRY,
+                    readings[0].time,
+                    dict(payload["readings"]),
+                )
+            )
         return True
 
 

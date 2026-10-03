@@ -3,7 +3,9 @@
 Background work over the same modules as the API:
 - the outbox relay: publishes committed outbox messages (device commands) to the broker;
 - the command sweeper: settles commands no device answered in time;
-- outbox housekeeping: deletes processed messages after the retention window.
+- the automation engine: device events (Redis stream, consumer group), hold timers and
+  schedules (ADR 0010);
+- housekeeping: processed outbox messages, old automation runs, interrupted runs.
 
 Plain asyncio loops, no job queue (ADR 0009). Several replicas can run side by side.
 """
@@ -11,17 +13,21 @@ Plain asyncio loops, no job queue (ADR 0009). Several replicas can run side by s
 import asyncio
 import contextlib
 import signal
+import socket
 from collections.abc import Awaitable, Callable
 from datetime import timedelta
 from pathlib import Path
 
 import structlog
 
+from smarthome.modules.automations import wiring as automations
 from smarthome.modules.commands import wiring as commands
 from smarthome.modules.devices import wiring as devices
+from smarthome.modules.telemetry import wiring as telemetry
 from smarthome.shared.clock import SystemClock
 from smarthome.shared.config import Settings, get_settings
 from smarthome.shared.infrastructure.db import create_engine
+from smarthome.shared.infrastructure.event_stream import StreamConsumer
 from smarthome.shared.infrastructure.mqtt_publisher import MqttPublisher, PublisherConfig
 from smarthome.shared.infrastructure.outbox import OutboxRelay
 from smarthome.shared.infrastructure.redis import create_redis
@@ -32,6 +38,8 @@ log = structlog.get_logger(__name__)
 
 HEARTBEAT_FILE = Path("/tmp/worker-heartbeat")  # noqa: S108 - tmpfs in the container
 PURGE_EVERY_S = 3600.0
+SCHEDULE_EVERY_S = 5.0
+STREAM_BLOCK_MS = 2000
 
 
 async def every(
@@ -55,6 +63,8 @@ async def heartbeat() -> None:
 async def run(settings: Settings) -> None:
     engine = create_engine(settings)
     redis = create_redis(settings)
+    # Its own connection pool: XREADGROUP blocks, which must not starve other callers.
+    stream_redis = create_redis(settings, socket_timeout=STREAM_BLOCK_MS / 1000 + 5)
     clock = SystemClock()
     publisher = MqttPublisher(
         PublisherConfig(
@@ -78,6 +88,23 @@ async def run(settings: Settings) -> None:
             settings, engine=engine, devices=device_service, clock=clock
         )
         retention = timedelta(hours=settings.outbox_retention_hours)
+        engine_service = automations.build_engine(
+            settings,
+            engine=engine,
+            redis=redis,
+            devices=device_service,
+            telemetry=telemetry.build_queries(engine=engine, redis=redis),
+            commands=command_service,
+            clock=clock,
+        )
+        events = StreamConsumer(
+            stream_redis,
+            group="automations",
+            consumer=f"worker-{socket.gethostname()}",
+            handler=engine_service.handle_event,
+            block_ms=STREAM_BLOCK_MS,
+        )
+        run_retention = timedelta(days=settings.automation_run_retention_days)
 
         stop = asyncio.Event()
         loop = asyncio.get_running_loop()
@@ -102,9 +129,43 @@ async def run(settings: Settings) -> None:
                     name="purge_outbox",
                 )
             )
+            tasks.create_task(events.run(stop))
+            tasks.create_task(
+                every(
+                    settings.automation_timer_interval_s,
+                    engine_service.fire_due_timers,
+                    stop,
+                    name="automation_timers",
+                )
+            )
+            tasks.create_task(
+                every(
+                    SCHEDULE_EVERY_S,
+                    engine_service.fire_due_schedules,
+                    stop,
+                    name="automation_schedules",
+                )
+            )
+            tasks.create_task(
+                every(
+                    PURGE_EVERY_S / 12,
+                    engine_service.settle_interrupted,
+                    stop,
+                    name="settle_interrupted_runs",
+                )
+            )
+            tasks.create_task(
+                every(
+                    PURGE_EVERY_S,
+                    lambda: engine_service.purge_runs(older_than=run_retention),
+                    stop,
+                    name="purge_automation_runs",
+                )
+            )
             tasks.create_task(every(5, heartbeat, stop, name="heartbeat"))
     finally:
         await publisher.close()
+        await stream_redis.aclose()
         await redis.aclose()
         await engine.dispose()
         log.info("worker_stopped")

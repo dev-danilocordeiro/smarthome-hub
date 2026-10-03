@@ -3,4 +3,7 @@
 The only import path other modules may use. Everything else in this package is private.
 """
 
-__all__: list[str] = []
+from smarthome.modules.automations.application.engine import AutomationEngine
+from smarthome.modules.automations.application.services import AutomationsService
+
+__all__ = ["AutomationEngine", "AutomationsService"]

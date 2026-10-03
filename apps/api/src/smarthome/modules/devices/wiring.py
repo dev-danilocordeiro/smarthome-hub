@@ -12,6 +12,7 @@ from smarthome.modules.devices.infrastructure.live_state import RedisLiveState
 from smarthome.modules.devices.infrastructure.persistence import PostgresDevicesUnitOfWork
 from smarthome.shared.clock import Clock
 from smarthome.shared.config import Settings
+from smarthome.shared.events import EventPublisher
 from smarthome.shared.http.rate_limit import RateLimiter
 
 __all__ = ["DevicesModule", "broker_admin", "build", "build_service", "mount"]
@@ -30,13 +31,20 @@ def broker_admin(settings: Settings) -> BrokerAdmin:
 
 
 def build_service(
-    settings: Settings, *, engine: AsyncEngine, redis: Redis, clock: Clock
+    settings: Settings,
+    *,
+    engine: AsyncEngine,
+    redis: Redis,
+    clock: Clock,
+    events: EventPublisher | None = None,
 ) -> DevicesService:
+    """`events`: only the ingestor records device traffic, so only it passes a publisher."""
     return DevicesService(
         lambda: PostgresDevicesUnitOfWork(engine),
         broker_admin(settings),
         RedisLiveState(redis),
         clock,
+        events=events,
     )
 
 
