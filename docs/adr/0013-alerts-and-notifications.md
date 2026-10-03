@@ -109,8 +109,8 @@ SSRF: outside development, URLs must be `https`, carry no credentials, and resol
 to public addresses (no loopback, RFC 1918, link-local such as the cloud metadata
 endpoint, unique-local IPv6, unspecified). The check runs when the URL is saved **and**
 before every send; redirects are not followed. DNS can change between the check and the
-connection (rebinding); pinning the resolved address under TLS is left for later and goes
-into the threat model (phase 11).
+connection (rebinding); pinning the resolved address under TLS is left for later (risk R3 in the
+[threat model](../security/threat-model.md)).
 
 ### Consequences
 

@@ -4,11 +4,12 @@ A multi-tenant smart home hub built to show **event-driven design, real-time
 telemetry, time-series storage, device security and observability**. Real hardware
 is optional: a simulator speaks the same MQTT protocol a real ESP32 would.
 
-> **Status:** phase 10 of 11 (energy, alerts, dashboards, load test). Diagrams, threat
-> model and E2E tests come next.
+> **Status:** all 11 phases done. Next: a real ESP32 on the same protocol.
+> [Architecture](docs/architecture.md) · [threat model](docs/security/threat-model.md) ·
+> [ASVS](docs/security/asvs.md) · [ADRs](docs/adr/)
 > [Versão em português](README.pt-BR.md).
 
-## What it will do
+## What it does
 
 - Register and control devices: lights, plugs, thermostat, lock, presence, door/window,
   temperature/humidity, energy meter and a simulated camera.
@@ -23,7 +24,7 @@ is optional: a simulator speaks the same MQTT protocol a real ESP32 would.
   inbox, email and signed webhooks, with quiet hours.
 - Trace every action end to end: click → API → MQTT → device → ack → WebSocket.
 
-## Architecture (so far)
+## Architecture
 
 A modular monolith with three entrypoints. See
 [ADR 0001](docs/adr/0001-modular-monolith-with-multiple-entrypoints.md).
@@ -53,6 +54,8 @@ flowchart LR
 ```
 
 Module boundaries are enforced in CI by [import-linter](apps/api/.importlinter).
+Containers, modules, where data lives and sequence diagrams for every main flow:
+[docs/architecture.md](docs/architecture.md).
 Every module owns one Postgres schema, with no foreign keys across schemas.
 
 ## Run it
@@ -82,8 +85,9 @@ make down
 | Loki       | http://localhost:3100          | logs over native OTLP                          |
 | OTel Collector | `localhost:4317` (gRPC), `localhost:4318` (HTTP) | single entry point for telemetry |
 
-Host ports are offset from the defaults so the stack can run next to other local projects.
-Override them in `.env`.
+Host ports are offset from the defaults so the stack can run next to other local projects,
+and listen on `127.0.0.1` only (`PUBLISH_HOST` in `.env`), except MQTT, which devices on
+your LAN need. Override them in `.env`.
 
 ## Sign in
 
@@ -247,6 +251,26 @@ make loadtest-api        # k6: 20 signed-in members reading devices, history, en
 
 Results and method: [docs/load-test.md](docs/load-test.md).
 
+## Security
+
+[Threat model](docs/security/threat-model.md) (STRIDE per trust boundary, each mitigation
+linked to its code or test, open risks ranked) and an
+[OWASP ASVS 5.0 Level 2 self-assessment](docs/security/asvs.md). In short: tokens never
+reach the browser, devices have their own credentials and ACLs, critical commands need a
+fresh sign-in and are audited in a hash-chained log, webhooks are signed and cannot reach
+internal addresses, and every dependency and image is scanned on each PR.
+
+## End-to-end tests
+
+```bash
+make up && make simulate FAULTS=0   # the stack and a fleet that behaves
+make web-dev                        # another terminal
+make e2e                            # Playwright: sign in, live control, energy, alerts, isolation
+```
+
+A real browser goes through Keycloak, the BFF, the broker, simulated devices and the live
+socket. CI runs the same on every PR ([ADR 0015](docs/adr/0015-testing-strategy.md)).
+
 ## Tour: follow one request through every signal
 
 ```bash
@@ -277,7 +301,8 @@ make check       # ruff, import-linter, mypy --strict, eslint, tsc, OpenAPI/TS t
 make gen-client  # after changing the API: re-export OpenAPI and regenerate the TS types
 make check-infra # validates compose, collector, Prometheus (+ alert rule tests), Alertmanager, Tempo, Loki, dashboards
 make test-unit   # no containers
-make test-it     # real TimescaleDB + Redis via Testcontainers
+make test-it     # real TimescaleDB, Redis, Mosquitto, Keycloak, Mailpit via Testcontainers
+make e2e         # Playwright against the running stack (see above)
 make help        # everything else
 ```
 
@@ -294,7 +319,8 @@ packages/
   device-protocol/   MQTT topics and message schemas
   contracts/         OpenAPI document + TypeScript types generated from it
 infra/          docker compose and service configs
-docs/adr/       architecture decision records (MADR)
+e2e/            Playwright end-to-end tests
+docs/           architecture, security, protocol, guides; adr/ holds the decision records (MADR)
 scripts/        repo tooling (import contracts, OpenAPI export, load test)
 ```
 
@@ -310,4 +336,6 @@ scripts/        repo tooling (import contracts, OpenAPI export, load test)
 8. ✅ Automations: DSL, rule engine, scenes, schedules, dry run
 9. ✅ Frontend: live floor plan, automation editor, history, PWA
 10. ✅ Energy, notifications, dashboards, alerts, load test
-11. Diagrams, remaining ADRs, threat model, ASVS checklist, E2E. Then a real ESP32.
+11. ✅ Architecture diagrams, API and testing ADRs, threat model, ASVS self-assessment, E2E
+
+Next: firmware for a real ESP32 speaking the same protocol.

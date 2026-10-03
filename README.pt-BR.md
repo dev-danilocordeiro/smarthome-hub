@@ -5,8 +5,8 @@ eventos, telemetria em tempo real, séries temporais, segurança de dispositivos
 observabilidade**. Não precisa de hardware: um simulador fala o mesmo protocolo MQTT que um
 ESP32 real falaria.
 
-> **Status:** fase 10 de 11 (energia, alertas, dashboards, teste de carga). A documentação
-> completa está no [README em inglês](README.md).
+> **Status:** as 11 fases estão concluídas; o próximo passo é um ESP32 de verdade. A
+> documentação completa está no [README em inglês](README.md).
 
 ## Arquitetura
 
@@ -143,3 +143,14 @@ automações, energia e notificações). O Prometheus avalia 14 regras de alerta
 `promtool test rules` no `make check-infra`, e o Alertmanager manda tudo para o Mailpit.
 `make loadtest-ingest` e `make loadtest-api` (k6) medem ingestão e leitura; método e
 resultados em [docs/load-test.md](docs/load-test.md).
+
+## Arquitetura, segurança e testes de ponta a ponta
+
+Diagramas de contexto, contêineres, módulos e fluxos em [docs/architecture.md](docs/architecture.md).
+Modelo de ameaças (STRIDE por fronteira de confiança, com riscos em aberto) em
+[docs/security/threat-model.md](docs/security/threat-model.md) e autoavaliação OWASP ASVS 5.0
+nível 2 em [docs/security/asvs.md](docs/security/asvs.md). As portas da stack escutam só em
+`127.0.0.1` (exceto o MQTT, que os dispositivos da rede local usam) e o Redis exige senha.
+`make e2e` roda testes Playwright num navegador de verdade contra a stack completa (login no
+Keycloak, controle ao vivo, energia, alertas, isolamento entre casas), também no CI a cada PR
+([ADR 0015](docs/adr/0015-testing-strategy.md)).
