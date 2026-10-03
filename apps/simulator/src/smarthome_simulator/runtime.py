@@ -62,8 +62,17 @@ def _event(event: str, **fields: object) -> None:
 
 
 class DeviceRunner:
-    def __init__(self, device: SimulatedDevice, password: str, broker: BrokerEndpoint) -> None:
+    def __init__(
+        self,
+        device: SimulatedDevice,
+        password: str,
+        broker: BrokerEndpoint,
+        *,
+        rate: float = 1.0,
+    ) -> None:
         self.device = device
+        # Telemetry messages per nominal interval (load tests); simulated time is `speed`.
+        self._rate = rate
         self._password = password
         self._broker = broker
         self._rng = random.Random(device.device_id)  # noqa: S311 - simulation
@@ -159,7 +168,7 @@ class DeviceRunner:
                 _event("device_offline", device_id=device.device_id, reason="shutdown")
 
     async def _telemetry(self, client: aiomqtt.Client) -> None:
-        interval = self.device.spec.telemetry_every_s
+        interval = self.device.spec.telemetry_every_s / self._rate
         # Spread devices so a fleet does not publish in lockstep.
         await asyncio.sleep(self._rng.uniform(0, interval))
         last = now()

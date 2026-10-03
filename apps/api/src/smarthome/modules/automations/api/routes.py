@@ -37,6 +37,7 @@ from smarthome.modules.identity.public import (
     Role,
     require_home_access,
 )
+from smarthome.shared.http.preconditions import etag, expected_version
 
 router = APIRouter(tags=["automations"])
 
@@ -55,10 +56,6 @@ class ReauthenticationRequired(Exception):
     pass
 
 
-class PreconditionRequired(Exception):
-    pass
-
-
 def automations_module(request: Request) -> AutomationsModule:
     module: AutomationsModule = request.app.state.automations
     return module
@@ -70,23 +67,6 @@ CanManage = Annotated[HomeAccess, Depends(require_home_access(Permission.MANAGE_
 
 
 # --- Helpers ----------------------------------------------------------------------------
-
-
-def etag(version: int) -> str:
-    return f'"{version}"'
-
-
-def expected_version(if_match: str | None, *, required: bool) -> int | None:
-    """Optimistic concurrency: edits name the version they started from."""
-    if if_match is None:
-        if required:
-            raise PreconditionRequired
-        return None
-    raw = if_match.strip().removeprefix("W/").strip('"')
-    try:
-        return int(raw)
-    except ValueError:
-        return -1  # never current: 412
 
 
 def authorize(

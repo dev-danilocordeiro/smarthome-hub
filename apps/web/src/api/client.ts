@@ -16,6 +16,13 @@ export type Scene = Schemas["SceneOut"];
 export type Run = Schemas["RunOut"];
 export type DryRun = Schemas["DryRunOut"];
 export type Command = Schemas["CommandOut"];
+export type Usage = Schemas["UsageOut"];
+export type Tariff = Schemas["TariffOut"];
+export type TariffIn = Schemas["TariffIn"];
+export type Alert = Schemas["AlertOut"];
+export type Notification = Schemas["NotificationOut"];
+export type NotificationPreferences = Schemas["PreferencesOut"];
+export type WebhookSettings = Schemas["WebhookOut"];
 
 export const BASE = "/api";
 const UNSAFE = new Set(["POST", "PUT", "PATCH", "DELETE"]);

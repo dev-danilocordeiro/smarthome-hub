@@ -30,7 +30,11 @@ from smarthome.shared.infrastructure.mqtt_consumer import (
 )
 from smarthome.shared.infrastructure.redis import create_redis
 from smarthome.shared.logging import configure_logging
-from smarthome.shared.observability import configure_providers, instrument_redis
+from smarthome.shared.observability import (
+    configure_providers,
+    instrument_process_metrics,
+    instrument_redis,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -107,6 +111,8 @@ def main() -> None:
         else None
     )
     configure_logging(level=settings.log_level, json=settings.log_json, otlp=providers is not None)
+    if providers is not None:
+        instrument_process_metrics()  # CPU and memory, as the API reports them
     try:
         asyncio.run(run(settings))
     finally:

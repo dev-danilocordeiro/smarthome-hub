@@ -15,6 +15,7 @@ from smarthome.modules.telemetry.application.ports import (
 from smarthome.modules.telemetry.domain.errors import InvalidRange
 from smarthome.modules.telemetry.domain.model import (
     MAX_RANGE,
+    HourlyIncrease,
     Point,
     Resolution,
     choose_resolution,
@@ -112,6 +113,15 @@ class TelemetryQueries:
             resolution=chosen,
         )
         return chosen, points
+
+    async def hourly_increase(
+        self, *, metric: str, start: datetime, end: datetime
+    ) -> list[HourlyIncrease]:
+        """Per device and hour, how much a cumulative counter grew in [start, end), across
+        every home. Counter resets (device reboots) are not negative consumption."""
+        if start >= end:
+            raise InvalidRange("`start` must be before `end`")
+        return await self._queries.hourly_increase(metric=metric, start=start, end=end)
 
     async def latest(self, device_id: str) -> dict[str, dict[str, object]]:
         return await self._latest.get(device_id)

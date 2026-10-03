@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from smarthome.modules.telemetry.domain.model import Point, Reading, Resolution
+from smarthome.modules.telemetry.domain.model import HourlyIncrease, Point, Reading, Resolution
 
 
 class ReadingsWriter(Protocol):
@@ -22,6 +22,10 @@ class ReadingsQueries(Protocol):
         end: datetime,
         resolution: Resolution,
     ) -> list[Point]: ...
+
+    async def hourly_increase(
+        self, *, metric: str, start: datetime, end: datetime
+    ) -> list[HourlyIncrease]: ...
 
 
 class LatestReadings(Protocol):

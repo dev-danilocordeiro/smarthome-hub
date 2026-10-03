@@ -30,3 +30,6 @@ infra/mqtt/certs/
 .vscode/
 .DS_Store
 .simulator/
+
+# Load test fleet credentials and reports
+.loadtest/

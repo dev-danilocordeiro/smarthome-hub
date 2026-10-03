@@ -15,16 +15,24 @@ from smarthome.modules.identity.api.dependencies import (
     require_home_access,
     require_websocket_home_access,
 )
-from smarthome.modules.identity.application.services import HomeAccess
+from smarthome.modules.identity.application.services import (
+    Audience,
+    HomeAccess,
+    IdentityService,
+    Recipient,
+)
 from smarthome.modules.identity.domain.model import HomeId, Permission, Role, UserId
 from smarthome.modules.identity.domain.principal import Principal
 
 __all__ = [
+    "Audience",
     "CurrentPrincipal",
     "HomeAccess",
     "HomeId",
+    "IdentityService",
     "Permission",
     "Principal",
+    "Recipient",
     "Role",
     "UserId",
     "recheck_websocket_access",

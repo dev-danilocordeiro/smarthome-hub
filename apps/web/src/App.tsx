@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router";
 import { loginUrl } from "./api/client";
 import { SessionProvider, signOut, useSession } from "./api/session";
+import { Bell } from "./notifications/Bell";
 import { HomePage } from "./pages/HomePage";
 import { HomesPage } from "./pages/HomesPage";
 
@@ -14,6 +15,7 @@ function Shell() {
         <h1>Smart Home Hub</h1>
         {state.status === "signed-in" && (
           <p>
+            <Bell />
             <strong>{state.session.user.name ?? state.session.user.email}</strong>{" "}
             <button type="button" className="ghost" onClick={() => void signOut()}>
               Sign out

@@ -3,7 +3,6 @@ from fastapi.responses import JSONResponse
 
 from smarthome.modules.automations.api.routes import (
     NotAllowed,
-    PreconditionRequired,
     ReauthenticationRequired,
 )
 from smarthome.modules.automations.domain.errors import (
@@ -51,14 +50,6 @@ async def _not_allowed(_: Request, exc: Exception) -> JSONResponse:
     return problem(status.HTTP_403_FORBIDDEN, "Not allowed", str(exc))
 
 
-async def _precondition_required(_: Request, __: Exception) -> JSONResponse:
-    return problem(
-        status.HTTP_428_PRECONDITION_REQUIRED,
-        "If-Match required",
-        "Send the ETag of the version you edited, so a concurrent edit is not overwritten.",
-    )
-
-
 async def _reauthenticate(request: Request, _: Exception) -> JSONResponse:
     settings = request.app.state.automations.settings
     return problem(
@@ -73,5 +64,4 @@ async def _reauthenticate(request: Request, _: Exception) -> JSONResponse:
 def register(app: FastAPI) -> None:
     app.add_exception_handler(AutomationsError, _automations_error)
     app.add_exception_handler(NotAllowed, _not_allowed)
-    app.add_exception_handler(PreconditionRequired, _precondition_required)
     app.add_exception_handler(ReauthenticationRequired, _reauthenticate)

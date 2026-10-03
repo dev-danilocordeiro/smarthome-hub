@@ -5,6 +5,7 @@ import { applyLive, EMPTY, type LiveMessage } from "./model";
 export type Connection = "connecting" | "live" | "reconnecting" | "signed-out" | "forbidden";
 
 const MAX_BACKOFF_MS = 30_000;
+export const ALERTS_CHANGED = "smarthome:alerts-changed";
 // Close codes the server uses (see identity/api/dependencies.py).
 const UNAUTHORIZED = 4401;
 const FORBIDDEN = 4403;
@@ -34,6 +35,10 @@ export function useLiveHome(homeId: string) {
           setConnection("live");
         }
         dispatch(message);
+        if (message.type === "alert") {
+          // The notification bell lives outside the home view; it listens for this.
+          window.dispatchEvent(new CustomEvent(ALERTS_CHANGED));
+        }
       };
       socket.onclose = (event) => {
         if (stopped) return;

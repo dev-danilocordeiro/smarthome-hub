@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Route, Routes, useParams } from "react-router";
 import { api, type Home, unwrap } from "../api/client";
+import { AlertsPage } from "../alerts/AlertsPage";
 import { AutomationsPage } from "../automations/AutomationsPage";
 import { useCommands } from "../devices/commands";
 import { DeviceDrawer } from "../devices/DeviceDrawer";
+import { EnergyPage } from "../energy/EnergyPage";
 import { FloorPlan } from "../floorplan/FloorPlan";
 import { type Connection, useLiveHome } from "../live/useLiveHome";
 import { ScenesPage } from "../scenes/ScenesPage";
@@ -59,6 +61,8 @@ export function HomePage() {
         <NavLink to={`/homes/${homeId}`} end>
           Floor plan
         </NavLink>
+        {role !== "guest" && <NavLink to={`/homes/${homeId}/energy`}>Energy</NavLink>}
+        <NavLink to={`/homes/${homeId}/alerts`}>Alerts</NavLink>
         {role !== "guest" && <NavLink to={`/homes/${homeId}/automations`}>Automations</NavLink>}
         <NavLink to={`/homes/${homeId}/scenes`}>Scenes</NavLink>
       </nav>
@@ -98,6 +102,13 @@ export function HomePage() {
                 />
               )}
             </div>
+          }
+        />
+        <Route path="energy" element={<EnergyPage homeId={homeId} canManage={canManage} />} />
+        <Route
+          path="alerts"
+          element={
+            <AlertsPage homeId={homeId} version={live.alerts} isOwner={role === "owner"} isGuest={role === "guest"} />
           }
         />
         <Route

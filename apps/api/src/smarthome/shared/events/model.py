@@ -10,6 +10,9 @@ class DeviceEventKind(StrEnum):
     PRESENCE = "presence"  # data: {"online": bool}
     TELEMETRY = "telemetry"  # data: the readings of one message
     COMMAND = "command"  # data: {"command_id", "status", "reason"} once an outcome is known
+    # data: {"alert_id", "kind", "severity", "status", "title"}; device_id is "" for alerts
+    # about the whole home (energy budget).
+    ALERT = "alert"
 
 
 @dataclass(frozen=True, slots=True)

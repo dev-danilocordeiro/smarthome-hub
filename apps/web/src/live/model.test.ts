@@ -56,3 +56,21 @@ describe("applyLive", () => {
     expect(applyLive(before, { type: "state", device_id: "lock-9", at: AT, locked: false })).toBe(before);
   });
 });
+
+describe("alert messages", () => {
+  it("bump a counter and leave devices alone", () => {
+    const state = applyLive(EMPTY, { type: "snapshot", devices: [device()] });
+    const next = applyLive(state, {
+      type: "alert",
+      device_id: "light-1",
+      at: "2026-10-03T10:00:00Z",
+      alert_id: "a1",
+      kind: "device_offline",
+      severity: "warning",
+      status: "open",
+      title: "Hall light is offline",
+    });
+    expect(next.alerts).toBe(1);
+    expect(next.devices).toBe(state.devices);
+  });
+});

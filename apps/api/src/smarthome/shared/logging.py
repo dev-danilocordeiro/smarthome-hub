@@ -74,3 +74,7 @@ def configure_logging(*, level: str, json: bool, otlp: bool = False) -> None:
     # uvicorn's access log interpolates values into the message string. Request logging
     # comes from OpenTelemetry instrumentation instead (phase 2).
     logging.getLogger("uvicorn.access").disabled = True
+    # httpx logs every request URL at INFO. Outbound URLs can carry secrets (a webhook
+    # URL with a token in its path, OIDC endpoints with codes in the query): keep only
+    # its warnings. Spans record outbound calls without the query string.
+    logging.getLogger("httpx").setLevel(logging.WARNING)

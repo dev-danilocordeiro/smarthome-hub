@@ -45,6 +45,22 @@ class MemberView:
 
 
 @dataclass(frozen=True, slots=True)
+class Recipient:
+    user_id: UserId
+    role: Role
+    email: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class Audience:
+    """Who hears about what happens in a home, and the home's clock."""
+
+    home_id: HomeId
+    timezone: str
+    recipients: tuple[Recipient, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class AuditView:
     entries: list[AuditEntry]
     chain_intact: bool
@@ -124,6 +140,26 @@ class IdentityService:
             ]
             names = await uow.users.display_names([m.user_id for m in memberships])
         return [MemberView(m, names.get(m.user_id)) for m in memberships]
+
+    async def audience(self, home_id: HomeId) -> Audience | None:
+        """Active members other than guests (a guest pass is for using some devices, not
+        for being told about the house). None if the home does not exist."""
+        now = self._clock.now()
+        async with self._uow() as uow:
+            home = await uow.homes.get(home_id)
+            if home is None:
+                return None
+            members = [
+                m
+                for m in await uow.memberships.current_for_home(home_id)
+                if m.is_active(now) and m.role is not Role.GUEST
+            ]
+            emails = await uow.users.emails([m.user_id for m in members])
+        return Audience(
+            home_id,
+            home.timezone,
+            tuple(Recipient(m.user_id, m.role, emails.get(m.user_id)) for m in members),
+        )
 
     async def invite(
         self,

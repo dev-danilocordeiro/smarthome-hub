@@ -185,3 +185,31 @@ async def test_nothing_is_committed_when_a_rule_is_violated(
         await service.revoke_member(principal("alice", clock), home.id, UserId("alice"))
 
     assert store.commits == commits
+
+
+async def test_the_audience_of_a_home_is_its_active_members_except_guests(
+    service: IdentityService, store: Store, clock: FakeClock, home: Home
+) -> None:
+    for name in ("alice", "bob"):
+        await service.record_login(principal(name, clock))
+    await join(service, clock, home, "bob", Role.RESIDENT)
+    await join(service, clock, home, "carol", Role.VIEWER)  # never signed in: no email yet
+    await join(
+        service,
+        clock,
+        home,
+        "gina",
+        Role.GUEST,
+        guest_access_expires_at=clock.now() + timedelta(days=1),
+    )
+
+    audience = await service.audience(home.id)
+
+    assert audience is not None
+    assert audience.timezone == "UTC"
+    assert {(r.user_id, r.role, r.email) for r in audience.recipients} == {
+        ("alice", Role.OWNER, "alice@example.com"),
+        ("bob", Role.RESIDENT, "bob@example.com"),
+        ("carol", Role.VIEWER, None),
+    }
+    assert await service.audience(HomeId(uuid4())) is None

@@ -1,0 +1,107 @@
+# promtool test rules infra/prometheus/rules/smarthome.test.yml
+rule_files:
+  - smarthome.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: ingestion stalls after traffic, but an idle stack is quiet
+    interval: 1m
+    input_series:
+      # Traffic for an hour, then nothing.
+      - series: 'smarthome_ingestor_messages_total{outcome="accepted"}'
+        values: '0+60x60 3600x40'
+      - series: 'smarthome_ingestor_messages_total{outcome="ignored"}'
+        values: '0x100'
+    alert_rule_test:
+      - eval_time: 55m
+        alertname: IngestionStalled
+        exp_alerts: []
+      - eval_time: 80m
+        alertname: IngestionStalled
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: Device telemetry stopped arriving
+              description: The ingestor accepted no messages in the last 10 minutes. Check the broker, the ingestor logs and the Device Pipeline dashboard.
+
+  - name: a stack that never had traffic does not page
+    interval: 1m
+    input_series:
+      - series: 'smarthome_ingestor_messages_total{outcome="accepted"}'
+        values: '0x120'
+    alert_rule_test:
+      - eval_time: 110m
+        alertname: IngestionStalled
+        exp_alerts: []
+
+  - name: the buffer must stay near full for two minutes
+    interval: 1m
+    input_series:
+      - series: 'smarthome_telemetry_buffer_size{service_instance_id="a"}'
+        values: '100 16000 16000 16000 16000'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: TelemetryBufferNearFull
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: TelemetryBufferNearFull
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: The ingestor's write buffer is nearly full
+              description: "16000 readings are waiting. At 20000 the ingestor stops reading MQTT (back-pressure) and devices' messages queue at the broker."
+
+  - name: command timeouts alert on ratio and only with real traffic
+    interval: 1m
+    input_series:
+      - series: 'smarthome_commands_settled_total{status="acknowledged"}'
+        values: '0+6x40'
+      - series: 'smarthome_commands_settled_total{status="timed_out"}'
+        values: '0+4x40'
+    alert_rule_test:
+      # 40% timed out from the start; pending for the first 15 minutes.
+      - eval_time: 10m
+        alertname: CommandTimeoutsHigh
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: CommandTimeoutsHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: More than 20% of commands time out
+              description: Devices are not answering. Check device presence and the broker.
+
+  - name: dead-lettered events alert per consumer group at once
+    interval: 1m
+    input_series:
+      - series: 'smarthome_events_consumed_total{group="automations", outcome="dead_lettered"}'
+        values: '0 0 1 1'
+      - series: 'smarthome_events_consumed_total{group="notifications", outcome="ok"}'
+        values: '0+10x3'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: EventsDeadLettered
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              group: automations
+            exp_annotations:
+              summary: Device events dead-lettered by automations
+              description: Some events failed 5 times and went to events:devices:dead. Inspect them with XRANGE.
+
+  - name: the API error rate ignores a trickle of traffic
+    interval: 1m
+    input_series:
+      - series: 'http_server_request_duration_seconds_count{service_name="smarthome-api", http_response_status_code="500"}'
+        values: '0+1x30'
+      - series: 'http_server_request_duration_seconds_count{service_name="smarthome-api", http_response_status_code="200"}'
+        values: '0+1x30'
+    alert_rule_test:
+      # 50% errors, but 2 requests a minute (< 0.1/s): not worth a page.
+      - eval_time: 25m
+        alertname: ApiErrorRateHigh
+        exp_alerts: []
