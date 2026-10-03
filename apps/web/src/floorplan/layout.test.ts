@@ -1,5 +1,5 @@
 import { device } from "../test/fakes";
-import { layout, roomsOf, UNASSIGNED } from "./layout";
+import { layout, roomLabel, roomsOf, shortName, UNASSIGNED } from "./layout";
 
 const devices = [
   device({ id: "a", name: "Lamp", room: "Living room" }),
@@ -43,5 +43,19 @@ describe("floor plan layout", () => {
     const plan = layout(devices, 360);
 
     expect(new Set(plan.rooms.map((r) => r.x)).size).toBe(1);
+  });
+});
+
+describe("labels", () => {
+  it("make room names readable", () => {
+    expect(roomLabel("living_room")).toBe("Living room");
+    expect(roomLabel("Entrance")).toBe("Entrance");
+  });
+
+  it("drop the room from a device's name and keep it short", () => {
+    expect(shortName("Living Room light", "living_room")).toBe("Light");
+    expect(shortName("Kitchen plug", "kitchen")).toBe("Plug");
+    expect(shortName("Desk lamp", "office")).toBe("Desk lamp");
+    expect(shortName("Utility energy meter", "garage")).toBe("Utility ener…");
   });
 });

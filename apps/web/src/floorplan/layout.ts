@@ -6,7 +6,7 @@ import type { LiveDevice } from "../live/model";
 export const UNASSIGNED = "Unassigned";
 const GAP = 16;
 const HEADER = 30;
-const CELL = 76;
+const CELL = 92;
 const PADDING = 12;
 
 export interface PlacedDevice {
@@ -78,4 +78,24 @@ export function layout(devices: LiveDevice[], width: number): Plan {
     y += height + GAP;
   }
   return { width, height: Math.max(y, 120), rooms: placed };
+}
+
+/** "living_room" -> "Living room". */
+export function roomLabel(name: string): string {
+  const spaced = name.replace(/[_-]+/g, " ").trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
+}
+
+/** A device's name as shown inside its room: "Living Room light" in "Living room" is
+ * "Light". Truncated to fit under its glyph. */
+export function shortName(deviceName: string, room: string | null, max = 13): string {
+  let name = deviceName;
+  if (room !== null) {
+    const prefix = roomLabel(room).toLowerCase();
+    if (name.toLowerCase().startsWith(`${prefix} `)) {
+      const rest = name.slice(prefix.length + 1);
+      name = rest.charAt(0).toUpperCase() + rest.slice(1);
+    }
+  }
+  return name.length > max ? `${name.slice(0, max - 1)}…` : name;
 }

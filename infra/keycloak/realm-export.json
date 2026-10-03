@@ -53,6 +53,7 @@
   ],
   "users": [
     {
+      "id": "57ea5d98-c5ff-4655-8358-6316f78965f4",
       "username": "alice",
       "email": "alice@smarthome.local",
       "emailVerified": true,
@@ -68,6 +69,7 @@
       ]
     },
     {
+      "id": "046dabd0-59f2-4049-9405-1ddf2a14f0c1",
       "username": "bob",
       "email": "bob@smarthome.local",
       "emailVerified": true,
@@ -83,6 +85,7 @@
       ]
     },
     {
+      "id": "8d3c1f52-6a0e-4b7e-9c2a-3f5e7b1d9a40",
       "username": "carol",
       "email": "carol@smarthome.local",
       "emailVerified": true,
@@ -98,6 +101,7 @@
       ]
     },
     {
+      "id": "c41e9b07-2d8f-4f61-a3b5-7e0d6c2f8b13",
       "username": "dave",
       "email": "dave@smarthome.local",
       "emailVerified": true,

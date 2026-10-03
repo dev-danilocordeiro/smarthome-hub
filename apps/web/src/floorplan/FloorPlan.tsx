@@ -1,7 +1,7 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { appearance, KIND_LABEL } from "../devices/appearance";
 import type { LiveDevice } from "../live/model";
-import { layout } from "./layout";
+import { layout, roomLabel, shortName } from "./layout";
 
 const FALLBACK_WIDTH = 960;
 const RADIUS = 22;
@@ -72,7 +72,7 @@ function DeviceGlyph({
         <Icon kind={device.kind} />
       </g>
       <text y={RADIUS + 14} className="name">
-        {device.name.length > 14 ? `${device.name.slice(0, 13)}…` : device.name}
+        {shortName(device.name, device.room)}
       </text>
       <text y={RADIUS + 27} className="detail">
         {look.detail}
@@ -120,7 +120,7 @@ export function FloorPlan({
           <g key={room.name} className="room">
             <rect x={room.x} y={room.y} width={room.width} height={room.height} rx={10} />
             <text x={room.x + 12} y={room.y + 20} className="room-name">
-              {room.name}
+              {roomLabel(room.name)}
             </text>
             {room.devices.map(({ device, x, y }) => (
               <DeviceGlyph

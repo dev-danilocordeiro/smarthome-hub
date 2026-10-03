@@ -56,11 +56,11 @@ export function HomePage() {
         </span>
       </header>
       <nav className="tabs" aria-label="Home sections">
-        <NavLink to="" end>
+        <NavLink to={`/homes/${homeId}`} end>
           Floor plan
         </NavLink>
-        {role !== "guest" && <NavLink to="automations">Automations</NavLink>}
-        <NavLink to="scenes">Scenes</NavLink>
+        {role !== "guest" && <NavLink to={`/homes/${homeId}/automations`}>Automations</NavLink>}
+        <NavLink to={`/homes/${homeId}/scenes`}>Scenes</NavLink>
       </nav>
       {live.connection === "signed-out" && (
         <p role="alert">

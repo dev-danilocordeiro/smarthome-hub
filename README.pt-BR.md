@@ -5,7 +5,7 @@ eventos, telemetria em tempo real, séries temporais, segurança de dispositivos
 observabilidade**. Não precisa de hardware: um simulador fala o mesmo protocolo MQTT que um
 ESP32 real falaria.
 
-> **Status:** fase 8 de 11 (automações). A documentação completa está no [README em inglês](README.md).
+> **Status:** fase 9 de 11 (app web). A documentação completa está no [README em inglês](README.md).
 
 ## Arquitetura
 
@@ -99,3 +99,14 @@ Automações que se disparariam em loop são apontadas ao salvar e **suspensas**
 (profundidade da cadeia causal e limite de taxa). Edições são versionadas (`If-Match` e
 histórico de revisões) e o **dry run** reexecuta até uma semana de telemetria gravada com as
 mesmas regras do motor ([ADR 0010](docs/adr/0010-automations-event-stream-and-loop-protection.md)).
+
+## App web
+
+`make up`, `make simulate` e `make web-dev`, depois http://localhost:5173 (usuária `alice`,
+senha `smarthome-dev-1`). Cada casa aparece como uma **planta ao vivo**: cômodos com seus
+dispositivos, atualizados por WebSocket conforme os dispositivos reportam. Ao selecionar um
+dispositivo dá para controlá-lo e ver estado, leituras, gráfico de histórico e comandos
+recentes. Há editor de automações (modelos, validação no servidor, dry run das últimas 24 h e
+execuções recentes) e cenas. O cliente TypeScript é tipado a partir do OpenAPI da API (o CI
+falha se ficar desatualizado) e o app é instalável como PWA
+([ADR 0011](docs/adr/0011-web-app-live-updates-and-typed-client.md)).
