@@ -6,7 +6,7 @@ from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter, SimpleLogRecordProcessor
 from opentelemetry.sdk.trace import TracerProvider
 
-from smarthome.shared.logging import add_trace_context
+from smarthome.shared.logging import add_trace_context, configure_logging
 from smarthome.shared.observability import OtlpLogHandler
 
 tracer = TracerProvider().get_tracer(__name__)
@@ -91,3 +91,9 @@ def test_an_exported_record_inside_a_span_is_linked_to_that_trace(
 
     (record,) = [r.log_record for r in exporter.get_finished_logs()]
     assert record.trace_id == expected_trace_id
+
+
+def test_outbound_request_urls_are_not_logged_at_info() -> None:
+    configure_logging(level="INFO", json=True)
+    assert not logging.getLogger("httpx").isEnabledFor(logging.INFO)
+    assert logging.getLogger("httpx").isEnabledFor(logging.WARNING)

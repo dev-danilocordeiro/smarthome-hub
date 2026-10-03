@@ -134,9 +134,10 @@ class PostgresAlerts:
                 text(
                     "WITH before AS ("  # noqa: S608 - column list constant
                     f" SELECT {ALERT_COLUMNS} FROM notifications.alerts"
-                    f" WHERE home_id = :home AND key = :key AND status IN {LIVE} FOR UPDATE)"
+                    f" WHERE home_id = :home AND key = :key AND status IN {LIVE}"
+                    " AND observed_at <= :observed_at FOR UPDATE)"
                     " UPDATE notifications.alerts a SET status = 'resolved', due_at = NULL,"
-                    " resolved_at = :at, observed_at = greatest(a.observed_at, :observed_at)"
+                    " resolved_at = :at, observed_at = :observed_at"
                     " FROM before WHERE a.id = before.id"
                     " RETURNING before.*"
                 ),
@@ -421,6 +422,18 @@ class PostgresDeliveries:
                     " AND channel = :channel AND target = :target AND settled_at >= :since"
                 ),
                 {"channel": channel.value, "target": target, "since": since},
+            )
+            or 0
+        )
+
+    async def overdue(self, now: datetime) -> int:
+        return int(
+            await self._conn.scalar(
+                text(
+                    "SELECT count(*) FROM notifications.deliveries"
+                    " WHERE status = 'queued' AND next_attempt_at <= :now"
+                ),
+                {"now": now},
             )
             or 0
         )

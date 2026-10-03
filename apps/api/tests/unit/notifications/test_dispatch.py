@@ -81,6 +81,9 @@ class FakeUnitOfWork:
     async def sent_since(self, channel: Channel, target: str, since: datetime) -> int:
         return self.store.sent_recently
 
+    async def overdue(self, now: datetime) -> int:
+        return len([d for d in self.store.due if d.id not in self.store.settled])
+
     async def status_of(self, alert_id: UUID) -> AlertStatus | None:
         return self.store.alert_status.get(alert_id)
 

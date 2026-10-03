@@ -10,6 +10,7 @@ from datetime import timedelta
 
 import structlog
 from opentelemetry import metrics
+from opentelemetry.metrics import CallbackOptions, Observation
 
 from smarthome.modules.notifications.application.alerts import dumps
 from smarthome.modules.notifications.application.ports import (
@@ -44,6 +45,25 @@ delivery_delay = meter.create_histogram(
 
 BATCH = 50
 RATE_WINDOW = timedelta(hours=1)
+# Overdue deliveries after the last run of a dispatcher in this process; the gauge is
+# registered by the first dispatcher created, so only the worker reports it.
+_overdue: list[int] = []
+
+
+def _observe_overdue(_: CallbackOptions) -> list[Observation]:
+    return [Observation(_overdue[0])]
+
+
+def _report_overdue() -> None:
+    if _overdue:
+        return
+    _overdue.append(0)
+    meter.create_observable_gauge(
+        "smarthome.notifications.overdue",
+        callbacks=[_observe_overdue],
+        unit="{delivery}",
+        description="Queued deliveries already due and not yet attempted.",
+    )
 
 
 class DeliveryDispatcher:
@@ -61,6 +81,7 @@ class DeliveryDispatcher:
         self._webhook = webhook
         self._clock = clock
         self._timing = timing
+        _report_overdue()
 
     async def run_once(self) -> int:
         """Attempt every due delivery once. Returns how many were attempted."""
@@ -68,6 +89,7 @@ class DeliveryDispatcher:
             due = await uow.deliveries.claim_due(self._clock.now(), limit=BATCH)
             for delivery in due:
                 await self._attempt(uow, delivery)
+            _overdue[0] = await uow.deliveries.overdue(self._clock.now())
             await uow.commit()
         return len(due)
 

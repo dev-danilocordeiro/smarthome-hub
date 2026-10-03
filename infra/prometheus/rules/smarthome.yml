@@ -1,0 +1,140 @@
+# Operational alerts for the hub (not to be confused with the alerts households get,
+# ADR 0013). Each one names what is broken from a user's point of view and where to look.
+# Unit tests: infra/prometheus/rules/smarthome.test.yml (`make check-infra`).
+groups:
+  - name: smarthome-ingestion
+    rules:
+      - alert: IngestionStalled
+        # No accepted messages for 10 minutes after an hour that had traffic: devices are
+        # connected but nothing gets in (broker, ingestor or database). An idle
+        # development stack never had traffic, so it stays quiet.
+        expr: |
+          sum(rate(smarthome_ingestor_messages_total{outcome="accepted"}[5m])) == 0
+          and sum(increase(smarthome_ingestor_messages_total{outcome="accepted"}[1h] offset 15m)) > 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: Device telemetry stopped arriving
+          description: The ingestor accepted no messages in the last 10 minutes. Check the broker, the ingestor logs and the Device Pipeline dashboard.
+      - alert: IngestLatencyHigh
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(smarthome_telemetry_ingest_latency_seconds_bucket[5m]))) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Readings take more than 5 s to reach the database (p95)
+          description: "p95 device-to-row latency is {{ $value | humanizeDuration }}. Batches may be slow (flush duration) or the buffer saturated."
+      - alert: TelemetryBufferNearFull
+        expr: max(smarthome_telemetry_buffer_size) > 15000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: The ingestor's write buffer is nearly full
+          description: "{{ $value }} readings are waiting. At 20000 the ingestor stops reading MQTT (back-pressure) and devices' messages queue at the broker."
+      - alert: TelemetryWritesFailing
+        expr: sum(increase(smarthome_telemetry_flush_failures_total[5m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Telemetry batches fail to write
+          description: Batches are being retried. Check database health and the ingestor logs.
+
+  - name: smarthome-control
+    rules:
+      - alert: OutboxBacklogGrowing
+        expr: max(smarthome_outbox_backlog{service_name="smarthome-worker"}) > 100
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Commands are not reaching the broker
+          description: "{{ $value }} commands are committed but unpublished. The outbox relay (worker) or the broker is down."
+      - alert: CommandTimeoutsHigh
+        expr: |
+          sum(rate(smarthome_commands_settled_total{status="timed_out"}[15m]))
+            / sum(rate(smarthome_commands_settled_total[15m])) > 0.2
+          and sum(rate(smarthome_commands_settled_total[15m])) > 0.01
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: More than 20% of commands time out
+          description: Devices are not answering. Check device presence and the broker.
+      - alert: EventConsumerLagging
+        expr: |
+          histogram_quantile(0.95, sum by (le, group) (rate(smarthome_events_lag_seconds_bucket[5m]))) > 30
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Consumer group {{ $labels.group }} is more than 30 s behind"
+          description: Automations or alerts react late. Check the worker.
+      - alert: EventsDeadLettered
+        expr: sum by (group) (increase(smarthome_events_consumed_total{outcome="dead_lettered"}[15m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Device events dead-lettered by {{ $labels.group }}"
+          description: Some events failed 5 times and went to events:devices:dead. Inspect them with XRANGE.
+
+  - name: smarthome-notifications
+    rules:
+      - alert: EnergyRollupBehind
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(smarthome_energy_rollup_lag_seconds_bucket[15m]))) > 1800
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Energy figures are more than 30 minutes stale
+          description: The rollup starts runs far behind its cursor. Check the worker and the database.
+      - alert: NotificationDeliveriesOverdue
+        expr: max(smarthome_notifications_overdue) > 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Notification emails and webhooks are piling up
+          description: "{{ $value }} deliveries are overdue. SMTP or webhook receivers are slow or failing."
+      - alert: NotificationDeliveriesFailing
+        expr: sum by (channel) (increase(smarthome_notifications_deliveries_total{outcome="failed"}[30m])) > 5
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.channel }} deliveries are being given up on"
+          description: More than 5 deliveries failed permanently in 30 minutes.
+
+  - name: smarthome-api
+    rules:
+      - alert: ApiErrorRateHigh
+        expr: |
+          sum(rate(http_server_request_duration_seconds_count{service_name="smarthome-api", http_response_status_code=~"5.."}[5m]))
+            / sum(rate(http_server_request_duration_seconds_count{service_name="smarthome-api"}[5m])) > 0.05
+          and sum(rate(http_server_request_duration_seconds_count{service_name="smarthome-api"}[5m])) > 0.1
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: More than 5% of API requests fail
+          description: See the Service Overview dashboard (errors by route) and the API logs.
+      - alert: ApiLatencyHigh
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name="smarthome-api"}[5m]))) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: API p95 latency above 1 s
+          description: See the Service Overview dashboard (latency by route, slowest spans).
+      - alert: ScrapeTargetDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} is not answering scrapes"
+          description: An infrastructure component of the observability stack is down.

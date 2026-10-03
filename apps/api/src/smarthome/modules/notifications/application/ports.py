@@ -47,7 +47,8 @@ class AlertStore(Protocol):
     async def clear(
         self, home_id: UUID, key: str, *, at: datetime, observed_at: datetime
     ) -> Alert | None:
-        """Drop a pending alert or resolve an open one. Returns it as it was before."""
+        """Drop a pending alert or resolve an open one, unless it reflects an observation
+        newer than `observed_at`. Returns it as it was before."""
         ...
 
     async def claim_due(self, now: datetime, *, limit: int) -> list[Alert]:
@@ -99,6 +100,10 @@ class Deliveries(Protocol):
         next_attempt_at: datetime | None = None,
     ) -> None: ...
     async def sent_since(self, channel: Channel, target: str, since: datetime) -> int: ...
+    async def overdue(self, now: datetime) -> int:
+        """Queued deliveries already due (what the dispatcher has not caught up with)."""
+        ...
+
     async def purge(self, *, settled_before: datetime) -> int: ...
 
 

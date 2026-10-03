@@ -1,0 +1,28 @@
+# Development routing: every operational alert becomes an email caught by Mailpit
+# (http://localhost:8025). In production the receiver would be a pager or chat.
+global:
+  smtp_smarthost: mailpit:1025
+  smtp_from: "Smart Home Hub ops <ops@smarthome.local>"
+  smtp_require_tls: false
+
+route:
+  receiver: ops-email
+  group_by: [alertname]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: [severity="critical"]
+      receiver: ops-email
+      repeat_interval: 1h
+
+receivers:
+  - name: ops-email
+    email_configs:
+      - to: ops@smarthome.local
+        send_resolved: true
+
+inhibit_rules:
+  # When nothing gets in, latency and buffer alerts are noise.
+  - source_matchers: [alertname="IngestionStalled"]
+    target_matchers: [alertname=~"IngestLatencyHigh|TelemetryBufferNearFull"]

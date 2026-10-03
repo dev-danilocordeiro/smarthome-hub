@@ -18,6 +18,7 @@ from smarthome.modules.notifications.domain.model import (
 )
 from smarthome.modules.notifications.domain.rules import (
     DeviceInfo,
+    clears,
     email_at,
     in_quiet_hours,
     on_budget,
@@ -194,3 +195,16 @@ def test_webhook_urls_are_validated(url: str, allow_http: bool, error: str | Non
 def test_retries_back_off_exponentially_up_to_an_hour() -> None:
     assert [TIMING.retry_after(n).total_seconds() for n in (1, 2, 3, 4)] == [30, 60, 120, 240]
     assert TIMING.retry_after(20) == timedelta(hours=1)
+
+
+def test_clears_are_known_without_the_device_and_match_the_full_rules() -> None:
+    cases: list[tuple[dict[str, object], DeviceEventKind]] = [
+        ({"online": True}, DeviceEventKind.PRESENCE),
+        ({"battery_pct": 80}, DeviceEventKind.TELEMETRY),
+        ({"battery_pct": 10}, DeviceEventKind.TELEMETRY),
+        ({"online": False}, DeviceEventKind.PRESENCE),
+    ]
+    for data, kind in cases:
+        e = event(kind, data)
+        full = [i for i in on_device_event(e, SENSOR, TIMING) if isinstance(i, Clear)]
+        assert clears(e, TIMING) == full

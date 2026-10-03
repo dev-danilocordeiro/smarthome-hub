@@ -70,12 +70,30 @@ services:
       - --web.enable-lifecycle
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
       - prometheusdata:/prometheus
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
     healthcheck:
       <<: *wget-healthcheck
       test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/ready"]
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanagerdata:/alertmanager
+    ports:
+      - "${ALERTMANAGER_PORT:-9093}:9093"
+    healthcheck:
+      <<: *wget-healthcheck
+      test: ["CMD", "wget", "-qO-", "http://localhost:9093/-/ready"]
+    depends_on:
+      mailpit:
+        condition: service_healthy
 
   tempo:
     image: grafana/tempo:3.0.0
@@ -127,6 +145,7 @@ services:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
 
 volumes:
+  alertmanagerdata:
   prometheusdata:
   tempodata:
   lokidata:

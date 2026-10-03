@@ -32,8 +32,9 @@ from opentelemetry.instrumentation.system_metrics import SystemMetricsInstrument
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
-from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics import Histogram, MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.sdk.metrics.view import ExplicitBucketHistogramAggregation, View
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -70,6 +71,21 @@ class Providers:
         self.meter.shutdown()
 
 
+# The SDK's default histogram boundaries (0, 5, 10, 25 ... 10000) are meant for
+# milliseconds. Every duration here is in seconds, which would put nearly every sample in
+# the first bucket and make every quantile read "about 5 s". One view for all of them,
+# from 5 ms (an MQTT handler) to an hour (the energy rollup's lag).
+SECONDS_BOUNDARIES = (
+    0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75,
+    1.0, 2.5, 5.0, 7.5, 10.0, 30.0, 60.0, 300.0, 900.0, 1800.0, 3600.0,
+)  # fmt: skip
+SECONDS_HISTOGRAMS = View(
+    instrument_type=Histogram,
+    instrument_unit="s",
+    aggregation=ExplicitBucketHistogramAggregation(SECONDS_BOUNDARIES),
+)
+
+
 def build_resource(settings: "Settings", *, service_name: str | None = None) -> Resource:
     return Resource.create(
         {
@@ -104,6 +120,7 @@ def configure_providers(settings: "Settings", *, service_name: str | None = None
                 export_interval_millis=settings.otel_metric_export_interval_ms,
             )
         ],
+        views=[SECONDS_HISTOGRAMS],
     )
 
     logger_provider = LoggerProvider(resource=resource)

@@ -3,7 +3,7 @@
     python -m smarthome_simulator plan --homes 3 --devices-per-home 20 > plan.json
     # the hub creates homes and one pairing code per device (devtools `seed`)
     python -m smarthome_simulator claim pairing.json fleet.json --api http://localhost:8000
-    python -m smarthome_simulator run fleet.json [--speed 60] [--fault-rate 1]
+    python -m smarthome_simulator run fleet.json [--speed 60] [--fault-rate 1] [--rate 1]
 
 `plan` describes homes and devices (no secrets). `claim` pairs every device through the
 hub's public provisioning endpoint and stores the returned credentials. Depends only on
@@ -40,7 +40,9 @@ def faults_for(rng: random.Random, scale: float) -> Faults:
     )
 
 
-def build_runners(fleet: dict[str, Any], *, speed: float, fault_rate: float) -> list[DeviceRunner]:
+def build_runners(
+    fleet: dict[str, Any], *, speed: float, fault_rate: float, rate: float = 1.0
+) -> list[DeviceRunner]:
     mqtt = fleet["mqtt"]
     broker = BrokerEndpoint(host=mqtt["host"], port=int(mqtt["port"]), ca_file=mqtt["ca_file"])
     seed = int(fleet.get("seed", 0))
@@ -60,18 +62,20 @@ def build_runners(fleet: dict[str, Any], *, speed: float, fault_rate: float) -> 
                 rng=device_rng,
                 faults=faults_for(device_rng, fault_rate),
             )
-            runners.append(DeviceRunner(device, spec["password"], broker))
+            runners.append(DeviceRunner(device, spec["password"], broker, rate=rate))
     return runners
 
 
-async def run(fleet: dict[str, Any], *, speed: float, fault_rate: float) -> None:
-    runners = build_runners(fleet, speed=speed, fault_rate=fault_rate)
+async def run(fleet: dict[str, Any], *, speed: float, fault_rate: float, rate: float = 1.0) -> None:
+    runners = build_runners(fleet, speed=speed, fault_rate=fault_rate, rate=rate)
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, stop.set)
     logging.getLogger("smarthome_simulator").info(
-        json.dumps({"event": "simulator_started", "devices": len(runners), "speed": speed})
+        json.dumps(
+            {"event": "simulator_started", "devices": len(runners), "speed": speed, "rate": rate}
+        )
     )
     async with asyncio.TaskGroup() as tasks:
         for runner in runners:
@@ -95,6 +99,12 @@ def main() -> int:
     go.add_argument("fleet", type=Path)
     go.add_argument("--speed", type=float, default=1.0, help="simulated seconds per real second")
     go.add_argument("--fault-rate", type=float, default=1.0, help="0 disables injected faults")
+    go.add_argument(
+        "--rate",
+        type=float,
+        default=1.0,
+        help="telemetry messages per nominal interval (load tests; e.g. 10 sends 10x as often)",
+    )
     args = parser.parse_args()
 
     if args.command == "plan":
@@ -119,7 +129,7 @@ def main() -> int:
     fleet = json.loads(args.fleet.read_text())
     tracing.configure()
     try:
-        asyncio.run(run(fleet, speed=args.speed, fault_rate=args.fault_rate))
+        asyncio.run(run(fleet, speed=args.speed, fault_rate=args.fault_rate, rate=args.rate))
     finally:
         tracing.shutdown()
     return 0

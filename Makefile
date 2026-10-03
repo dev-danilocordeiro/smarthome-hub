@@ -96,6 +96,43 @@ simulate: .env certs $(SIM_DIR)/fleet.json ## Pair (first run only) and run 3 ho
 simulate-reset: ## Forget the simulated fleet; the next `make simulate` pairs a new one
 	rm -rf $(SIM_DIR)
 
+# --- Load test (docs/load-test.md) ----------------------------------------------
+
+LOAD_DIR     := $(CURDIR)/.loadtest
+LOAD_HOMES   ?= 50
+LOAD_DEVICES ?= 20
+LOAD_RATE    ?= 5
+LOAD_SECONDS ?= 300
+VUS          ?= 20
+K6_IMAGE     := grafana/k6:2.3.0
+
+$(LOAD_DIR)/fleet.json:
+	@mkdir -p $(LOAD_DIR)
+	$(SIM) plan --homes $(LOAD_HOMES) --devices-per-home $(LOAD_DEVICES) --seed 7 > $(LOAD_DIR)/plan.json
+	$(DEVTOOLS) seed $(LOAD_DIR)/plan.json $(LOAD_DIR)/pairing.json --owner dave
+	$(SIM) claim $(LOAD_DIR)/pairing.json $(LOAD_DIR)/fleet.json \
+	  --api http://localhost:$${API_PORT:-8000} --ca-file $(CURDIR)/infra/mqtt/certs/ca.crt
+
+.PHONY: loadtest-ingest
+loadtest-ingest: .env certs $(LOAD_DIR)/fleet.json ## Telemetry load: LOAD_HOMES x LOAD_DEVICES devices at LOAD_RATE x their normal rate for LOAD_SECONDS, then a report
+	@start=$$(date +%s); \
+	  timeout --signal=INT --preserve-status $(LOAD_SECONDS) \
+	    bash -c 'cd apps/simulator && poetry run python -m smarthome_simulator run $(LOAD_DIR)/fleet.json --rate $(LOAD_RATE) --fault-rate 0' \
+	    > $(LOAD_DIR)/simulator.log 2>&1; \
+	  end=$$(date +%s); sleep 20; \
+	  python3 scripts/loadtest/report.py --start $$((start + 30)) --end $$end | tee $(LOAD_DIR)/ingest-report.md
+
+.PHONY: loadtest-api
+loadtest-api: .env ## HTTP read load with k6: VUS members for SECONDS against the BFF (needs `make web-dev` for the login)
+	apps/api/.venv/bin/python scripts/loadtest/session.py --user dave > $(LOAD_DIR)/session.json
+	docker run --rm --network host --user $$(id -u):$$(id -g) -v $(CURDIR)/scripts/loadtest:/scripts:ro -v $(LOAD_DIR):/loadtest \
+	  -e VUS=$(VUS) -e SECONDS=$${SECONDS:-120} -e API=http://localhost:$${API_PORT:-8000} \
+	  $(K6_IMAGE) run --summary-export=/loadtest/api-summary.json /scripts/api.js
+
+.PHONY: loadtest-reset
+loadtest-reset: ## Forget the load-test fleet (its homes stay in the database; `make nuke` clears all)
+	rm -rf $(LOAD_DIR)
+
 .PHONY: web-dev
 web-dev: ## Run the Vite dev server
 	npm run -w apps/web dev
@@ -139,12 +176,16 @@ typecheck: ## mypy --strict on every Python app, tsc on the web app
 	npm run -w apps/web typecheck
 
 .PHONY: check-infra
-check-infra: .env ## Validate compose, collector, Prometheus, Tempo, Loki, dashboards and CI workflows
+check-infra: .env ## Validate compose, collector, Prometheus (and its alert rule tests), Alertmanager, Tempo, Loki, dashboards and CI workflows
 	$(COMPOSE) config --quiet
 	docker run --rm -v $(CURDIR)/infra/otel-collector/config.yaml:/c.yaml:ro \
 	  $(call image,otel-collector) validate --config=/c.yaml
-	docker run --rm --entrypoint promtool -v $(CURDIR)/infra/prometheus:/p:ro \
-	  $(call image,prometheus) check config /p/prometheus.yml
+	docker run --rm --entrypoint promtool -v $(CURDIR)/infra/prometheus:/etc/prometheus:ro \
+	  $(call image,prometheus) check config /etc/prometheus/prometheus.yml
+	docker run --rm --entrypoint promtool -v $(CURDIR)/infra/prometheus:/etc/prometheus:ro \
+	  $(call image,prometheus) test rules /etc/prometheus/rules/smarthome.test.yml
+	docker run --rm --entrypoint amtool -v $(CURDIR)/infra/alertmanager:/a:ro \
+	  $(call image,alertmanager) check-config /a/alertmanager.yml
 	docker run --rm -v $(CURDIR)/infra/tempo/tempo.yaml:/t.yaml:ro \
 	  $(call image,tempo) -config.file=/t.yaml -config.verify=true
 	docker run --rm -v $(CURDIR)/infra/loki/loki.yaml:/l.yaml:ro \

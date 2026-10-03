@@ -82,6 +82,19 @@ def on_device_event(event: DeviceEvent, device: DeviceInfo, timing: Timing) -> l
     return []
 
 
+def clears(event: DeviceEvent, timing: Timing) -> list[Clear]:
+    """The clears `on_device_event` would return, decided without knowing the device.
+    Most readings are of this kind (a healthy battery, a device coming back), so the
+    engine handles them without looking the device up."""
+    match event.kind:
+        case DeviceEventKind.PRESENCE if event.data.get("online") is True:
+            return [Clear(offline_key(event.device_id), event.at)]
+        case DeviceEventKind.TELEMETRY if _number(event.data.get("battery_pct")):
+            if float(event.data["battery_pct"]) >= timing.battery_ok_pct:
+                return [Clear(battery_key(event.device_id), event.at)]
+    return []
+
+
 def on_budget(
     *, month_start: datetime, used_kwh: float, budget_kwh: float, now: datetime, timing: Timing
 ) -> list[Raise]:

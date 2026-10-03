@@ -4,7 +4,8 @@ A multi-tenant smart home hub built to show **event-driven design, real-time
 telemetry, time-series storage, device security and observability**. Real hardware
 is optional: a simulator speaks the same MQTT protocol a real ESP32 would.
 
-> **Status:** phase 9 of 11 (web app). Most of the product below is still on the roadmap.
+> **Status:** phase 10 of 11 (energy, alerts, dashboards, load test). Diagrams, threat
+> model and E2E tests come next.
 > [Versão em português](README.pt-BR.md).
 
 ## What it will do
@@ -16,6 +17,10 @@ is optional: a simulator speaks the same MQTT protocol a real ESP32 would.
 - Run **automations** from a versioned JSON DSL, with loop protection and dry-run
   against history.
 - Show a live SVG floor plan in a React PWA over WebSocket.
+- Account **energy** per hour and device from meter counters, with exact time-of-use
+  tariffs and a monthly budget.
+- Raise **alerts** (device offline, low battery, budget) once per condition, into an
+  inbox, email and signed webhooks, with quiet hours.
 - Trace every action end to end: click → API → MQTT → device → ack → WebSocket.
 
 ## Architecture (so far)
@@ -33,7 +38,7 @@ flowchart LR
   end
   api["api<br/>(FastAPI)"] --> monolith
   ingestor["ingestor<br/>(MQTT consumer)"] --> monolith
-  worker["worker<br/>(outbox, schedules)"] --> monolith
+  worker["worker<br/>(outbox, automations,<br/>energy, alerts)"] --> monolith
   simulator["simulator"] --> protocol["packages/device-protocol"]
   monolith --> protocol
   monolith --> pg[("PostgreSQL 16<br/>+ TimescaleDB")]
@@ -43,6 +48,8 @@ flowchart LR
   otel --> tempo[("Tempo")]
   otel --> loki[("Loki")]
   prom & tempo & loki --> grafana["Grafana"]
+  prom --> am["Alertmanager"]
+  am & monolith -- SMTP --> mail["Mailpit (dev)"]
 ```
 
 Module boundaries are enforced in CI by [import-linter](apps/api/.importlinter).
@@ -68,7 +75,9 @@ make down
 | Keycloak   | http://localhost:8080          | realm `smarthome`; admin password in `.env`    |
 | MQTT (TLS) | `localhost:8883`               | Mosquitto; dev CA in `infra/mqtt/certs/ca.crt` |
 | Grafana    | http://localhost:3000          | anonymous viewer; admin password in `.env`     |
-| Prometheus | http://localhost:9090          | OTLP receiver + exemplar storage               |
+| Prometheus | http://localhost:9090          | OTLP receiver + exemplar storage, alert rules  |
+| Alertmanager | http://localhost:9093        | operational alerts, emailed to Mailpit         |
+| Mailpit    | http://localhost:8025          | catches every email the stack sends (SMTP 1025) |
 | Tempo      | http://localhost:3200          | traces; metrics-generator → Prometheus         |
 | Loki       | http://localhost:3100          | logs over native OTLP                          |
 | OTel Collector | `localhost:4317` (gRPC), `localhost:4318` (HTTP) | single entry point for telemetry |
@@ -181,6 +190,63 @@ telemetry through the engine's own rules to show when an automation would have r
 With the simulator running, a motion reading, the automation it triggers, the command,
 the device and its acks show up as one trace in Tempo.
 
+## Energy
+
+```http
+GET /homes/{home}/energy/usage?from=…&to=…&bucket=hour|day   # kWh and cost, per bucket and per device
+PUT /homes/{home}/energy/tariff                              # currency, price per kWh, time-of-use periods, monthly budget
+```
+
+Plugs and the whole-home meter report a cumulative `energy_wh_total`. The `worker` folds
+the deltas into hourly consumption per device every minute, treating a counter that went
+down as a reboot rather than negative energy, and recomputing recent hours so late or
+redelivered readings land where they belong. Reports never touch raw telemetry, so a year
+of daily buckets costs a few thousand rows
+([ADR 0012](docs/adr/0012-energy-accounting-from-counters.md)).
+
+Prices are exact: decimal strings in the API, `numeric` in Postgres, `Decimal` in
+Python, rounded once to the currency's minor unit. Time-of-use periods (e.g. a weekday
+evening peak) price each hour at its local rate. When a meter is present the home total
+is the meter, the plugs are a breakdown, and the rest is reported as *unmetered*.
+
+## Alerts and notifications
+
+```http
+GET  /homes/{home}/alerts?status=open|resolved     POST /homes/{home}/alerts/{id}/acknowledge
+GET  /me/notifications                             POST /me/notifications/read-all
+PUT  /homes/{home}/notification-preferences        # email on/off, minimum severity, quiet hours
+PUT  /homes/{home}/webhook                         # owners: signed POSTs on every alert transition
+```
+
+A lock offline for more than 5 minutes, a battery under 15 %, a month past 80 % or 100 %
+of its energy budget: each becomes **one** alert with a lifecycle (`pending → open →
+resolved`), however often the condition flaps and however many workers see the event. A
+partial unique index decides, not application code
+([ADR 0013](docs/adr/0013-alerts-and-notifications.md)). Members get an inbox entry (and
+the web app's bell updates over the live socket), email according to their preferences,
+and the home's webhook receives a payload signed with HMAC-SHA256
+([integration guide](docs/notifications.md)). Delivery is a queue with retries and
+backoff; in development every email lands in Mailpit.
+
+## Dashboards and operational alerts
+
+Grafana ships four dashboards: **Service Overview** (RED metrics, traces, logs),
+**Device Pipeline** (ingestion rate, latency, batching, back-pressure, event stream lag),
+**Commands and Automations** (acks, timeouts, outbox, runs, live sockets) and **Energy and
+Notifications** (rollup lag, alert transitions, delivery queue). Prometheus evaluates 14
+alert rules (ingestion stalled, buffer near full, outbox backlog, consumer lag, dead
+letters, API errors and latency…), unit-tested with `promtool test rules` in
+`make check-infra`; Alertmanager emails them to Mailpit.
+
+## Load test
+
+```bash
+make loadtest-ingest     # pairs 50 homes x 20 devices, runs them at 5x their rate for 5 min, prints a report
+make loadtest-api        # k6: 20 signed-in members reading devices, history, energy, inbox
+```
+
+Results and method: [docs/load-test.md](docs/load-test.md).
+
 ## Tour: follow one request through every signal
 
 ```bash
@@ -209,7 +275,7 @@ How it is wired: [ADR 0002](docs/adr/0002-observability-pipeline.md).
 make install     # poetry install in every Python app + npm ci
 make check       # ruff, import-linter, mypy --strict, eslint, tsc, OpenAPI/TS types up to date
 make gen-client  # after changing the API: re-export OpenAPI and regenerate the TS types
-make check-infra # validates compose, collector, Prometheus, Tempo, Loki and dashboards
+make check-infra # validates compose, collector, Prometheus (+ alert rule tests), Alertmanager, Tempo, Loki, dashboards
 make test-unit   # no containers
 make test-it     # real TimescaleDB + Redis via Testcontainers
 make help        # everything else
@@ -229,7 +295,7 @@ packages/
   contracts/         OpenAPI document + TypeScript types generated from it
 infra/          docker compose and service configs
 docs/adr/       architecture decision records (MADR)
-scripts/        repo tooling (import contract generator)
+scripts/        repo tooling (import contracts, OpenAPI export, load test)
 ```
 
 ## Roadmap
@@ -243,5 +309,5 @@ scripts/        repo tooling (import contract generator)
 7. ✅ Commands: ack, timeout, idempotency, trace propagation over MQTT
 8. ✅ Automations: DSL, rule engine, scenes, schedules, dry run
 9. ✅ Frontend: live floor plan, automation editor, history, PWA
-10. Energy, notifications, dashboards, alerts, load test
+10. ✅ Energy, notifications, dashboards, alerts, load test
 11. Diagrams, remaining ADRs, threat model, ASVS checklist, E2E. Then a real ESP32.

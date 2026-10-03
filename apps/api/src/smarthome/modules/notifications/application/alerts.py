@@ -37,7 +37,12 @@ from smarthome.modules.notifications.domain.model import (
     Raise,
     Timing,
 )
-from smarthome.modules.notifications.domain.rules import email_at, on_budget, on_device_event
+from smarthome.modules.notifications.domain.rules import (
+    clears,
+    email_at,
+    on_budget,
+    on_device_event,
+)
 from smarthome.shared.clock import Clock
 from smarthome.shared.events import (
     DeviceEvent,
@@ -115,6 +120,8 @@ class AlertEngine:
         )
         if not relevant:  # most telemetry: skip without touching the database
             return 0
+        if cleared := clears(event, self._timing):  # one UPDATE, no device lookup
+            return await self.apply(event.home_id, list(cleared))
         device = await self._devices.info(event.home_id, event.device_id)
         if device is None:
             return 0
@@ -172,12 +179,14 @@ class AlertEngine:
         for intent in intents:
             now = self._clock.now()
             async with self._uow() as uow:
-                last = await uow.alerts.last_observed(home_id, intent.key)
-                if last is not None and intent.observed_at < last:
-                    continue  # older than what the alert already reflects
                 if isinstance(intent, Raise):
+                    # Not after a newer observation (a later clear, or a later raise).
+                    last = await uow.alerts.last_observed(home_id, intent.key)
+                    if last is not None and intent.observed_at < last:
+                        continue
                     alert, event = await self._raise(uow, home_id, intent, now=now)
                 else:
+                    # The store only clears an alert raised no later than the observation.
                     alert, event = await self._clear(uow, home_id, intent, now=now)
                 if alert is not None and event is not None:
                     await self._notify(uow, alert, event, now=now)

@@ -5,7 +5,8 @@ eventos, telemetria em tempo real, séries temporais, segurança de dispositivos
 observabilidade**. Não precisa de hardware: um simulador fala o mesmo protocolo MQTT que um
 ESP32 real falaria.
 
-> **Status:** fase 9 de 11 (app web). A documentação completa está no [README em inglês](README.md).
+> **Status:** fase 10 de 11 (energia, alertas, dashboards, teste de carga). A documentação
+> completa está no [README em inglês](README.md).
 
 ## Arquitetura
 
@@ -34,6 +35,8 @@ make check && make test              # gates estáticos e testes
 | Prometheus | http://localhost:9090    |
 | Tempo      | http://localhost:3200    |
 | Loki       | http://localhost:3100    |
+| Alertmanager | http://localhost:9093  |
+| Mailpit    | http://localhost:8025    |
 
 ## Observabilidade
 
@@ -110,3 +113,33 @@ recentes. Há editor de automações (modelos, validação no servidor, dry run 
 execuções recentes) e cenas. O cliente TypeScript é tipado a partir do OpenAPI da API (o CI
 falha se ficar desatualizado) e o app é instalável como PWA
 ([ADR 0011](docs/adr/0011-web-app-live-updates-and-typed-client.md)).
+
+## Energia
+
+Tomadas e o medidor geral reportam um contador acumulado (`energy_wh_total`). O `worker`
+transforma as diferenças em consumo por hora e por dispositivo a cada minuto: um contador
+que diminuiu é tratado como reinício do aparelho (nunca energia negativa) e as horas
+recentes são recalculadas, então leituras atrasadas ou reenviadas caem no lugar certo. A
+tarifa é exata (strings decimais na API, `numeric` no Postgres, `Decimal` no Python,
+arredondada uma vez só) e aceita postos horários, como a tarifa branca. Com medidor geral,
+o total da casa é o medidor e as tomadas viram detalhamento
+([ADR 0012](docs/adr/0012-energy-accounting-from-counters.md)).
+
+## Alertas e notificações
+
+Fechadura offline por mais de 5 minutos, bateria abaixo de 15 %, mês passando de 80 % ou
+100 % do orçamento de energia: cada condição vira **um** alerta (`pending → open →
+resolved`), por mais que o sensor oscile e por mais workers que vejam o evento; quem
+garante é um índice único parcial no banco. Os membros recebem a notificação no app (o
+sininho atualiza pelo WebSocket), e-mail conforme as preferências (gravidade mínima,
+horário de silêncio, que alertas críticos ignoram) e o webhook da casa recebe um POST
+assinado com HMAC-SHA256. Em desenvolvimento todo e-mail cai no Mailpit
+([ADR 0013](docs/adr/0013-alerts-and-notifications.md), [guia do webhook](docs/notifications.md)).
+
+## Dashboards, alertas operacionais e teste de carga
+
+O Grafana tem quatro dashboards (serviços, pipeline de dispositivos, comandos e
+automações, energia e notificações). O Prometheus avalia 14 regras de alerta, testadas com
+`promtool test rules` no `make check-infra`, e o Alertmanager manda tudo para o Mailpit.
+`make loadtest-ingest` e `make loadtest-api` (k6) medem ingestão e leitura; método e
+resultados em [docs/load-test.md](docs/load-test.md).
