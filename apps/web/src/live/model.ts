@@ -31,6 +31,17 @@ export type LiveMessage =
       command_id: string;
       status: string;
       reason: string | null;
+    }
+  | {
+      type: "alert";
+      // "" for alerts about the whole home (energy budget).
+      device_id: string;
+      at: string;
+      alert_id: string;
+      kind: string;
+      severity: "info" | "warning" | "critical";
+      status: "open" | "resolved";
+      title: string;
     };
 
 export interface CommandUpdate {
@@ -42,9 +53,11 @@ export interface CommandUpdate {
 export interface LiveState {
   devices: Record<string, LiveDevice>;
   commands: Record<string, CommandUpdate>;
+  /** Bumped on every alert transition, so views listing alerts know to reload. */
+  alerts: number;
 }
 
-export const EMPTY: LiveState = { devices: {}, commands: {} };
+export const EMPTY: LiveState = { devices: {}, commands: {}, alerts: 0 };
 
 const ENVELOPE = new Set(["type", "device_id", "at"]);
 
@@ -57,9 +70,12 @@ function payload(message: Record<string, unknown>): Record<string, unknown> {
 export function applyLive(state: LiveState, message: LiveMessage): LiveState {
   if (message.type === "snapshot") {
     return {
+      ...state,
       devices: Object.fromEntries(message.devices.map((d) => [d.id, d])),
-      commands: state.commands,
     };
+  }
+  if (message.type === "alert") {
+    return { ...state, alerts: state.alerts + 1 };
   }
   if (message.type === "command") {
     return {
