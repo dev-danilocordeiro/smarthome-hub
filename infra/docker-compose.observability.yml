@@ -47,8 +47,8 @@ services:
     volumes:
       - ./otel-collector/config.yaml:/etc/otelcol/config.yaml:ro
     ports:
-      - "${OTEL_GRPC_PORT:-4317}:4317"
-      - "${OTEL_HTTP_PORT:-4318}:4318"
+      - "${PUBLISH_HOST:-127.0.0.1}:${OTEL_GRPC_PORT:-4317}:4317"
+      - "${PUBLISH_HOST:-127.0.0.1}:${OTEL_HTTP_PORT:-4318}:4318"
     depends_on:
       prometheus:
         condition: service_healthy
@@ -73,7 +73,7 @@ services:
       - ./prometheus/rules:/etc/prometheus/rules:ro
       - prometheusdata:/prometheus
     ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
+      - "${PUBLISH_HOST:-127.0.0.1}:${PROMETHEUS_PORT:-9090}:9090"
     healthcheck:
       <<: *wget-healthcheck
       test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/ready"]
@@ -87,7 +87,7 @@ services:
       - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanagerdata:/alertmanager
     ports:
-      - "${ALERTMANAGER_PORT:-9093}:9093"
+      - "${PUBLISH_HOST:-127.0.0.1}:${ALERTMANAGER_PORT:-9093}:9093"
     healthcheck:
       <<: *wget-healthcheck
       test: ["CMD", "wget", "-qO-", "http://localhost:9093/-/ready"]
@@ -103,7 +103,7 @@ services:
       - ./tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
       - tempodata:/var/tempo
     ports:
-      - "${TEMPO_PORT:-3200}:3200"
+      - "${PUBLISH_HOST:-127.0.0.1}:${TEMPO_PORT:-3200}:3200"
 
   loki:
     image: grafana/loki:3.7.8
@@ -112,7 +112,7 @@ services:
       - ./loki/loki.yaml:/etc/loki/loki.yaml:ro
       - lokidata:/loki
     ports:
-      - "${LOKI_PORT:-3100}:3100"
+      - "${PUBLISH_HOST:-127.0.0.1}:${LOKI_PORT:-3100}:3100"
 
   grafana:
     image: grafana/grafana:13.2.3
@@ -132,7 +132,7 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafanadata:/var/lib/grafana
     ports:
-      - "${GRAFANA_PORT:-3000}:3000"
+      - "${PUBLISH_HOST:-127.0.0.1}:${GRAFANA_PORT:-3000}:3000"
     depends_on:
       prometheus:
         condition: service_healthy

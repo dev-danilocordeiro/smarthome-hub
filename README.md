@@ -70,7 +70,7 @@ make down
 |------------|--------------------------------|------------------------------------------------|
 | API        | http://localhost:8000          | `/health/live`, `/health/ready`, `/docs`       |
 | PostgreSQL | `localhost:15432`              | TimescaleDB 2.30, credentials in `.env`        |
-| Redis      | `localhost:16379`              |                                                |
+| Redis      | `localhost:16379`              | password in `.env`                             |
 | Web (dev)  | http://localhost:5173          | `make web-dev`, not containerised yet          |
 | Keycloak   | http://localhost:8080          | realm `smarthome`; admin password in `.env`    |
 | MQTT (TLS) | `localhost:8883`               | Mosquitto; dev CA in `infra/mqtt/certs/ca.crt` |

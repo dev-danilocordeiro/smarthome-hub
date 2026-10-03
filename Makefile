@@ -76,7 +76,7 @@ DEVTOOLS  := set -a; source .env; set +a; cd apps/api && \
 	SMARTHOME_MQTT_CA_FILE=$(CURDIR)/infra/mqtt/certs/ca.crt \
 	SMARTHOME_MQTT_PORT=$${MQTT_TLS_PORT:-8883} \
 	SMARTHOME_DATABASE_URL=postgresql+asyncpg://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@localhost:$${POSTGRES_PORT}/$${POSTGRES_DB} \
-	SMARTHOME_REDIS_URL=redis://localhost:$${REDIS_PORT}/0 \
+	SMARTHOME_REDIS_URL=redis://:$${REDIS_PASSWORD}@localhost:$${REDIS_PORT}/0 \
 	poetry run python -m smarthome.devtools.fleet
 
 $(SIM_DIR)/fleet.json:
