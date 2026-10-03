@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from uuid import UUID
 
 from fastapi import Depends, Request, WebSocket, WebSocketException, status
+from starlette.websockets import WebSocketState
 
 from smarthome.modules.identity.api.container import IdentityModule
 from smarthome.modules.identity.application.services import HomeAccess
@@ -127,6 +128,12 @@ def require_device_access(permission: Permission) -> Callable[..., Awaitable[Hom
 # policy does not apply to it: any page could open a socket with the user's cookie
 # (cross-site WebSocket hijacking). The Origin header, which a page cannot forge, must
 # be one we serve. Close codes 44xx mirror the HTTP status (private range 4000-4999).
+#
+# A foreign Origin is refused at the handshake (the browser sees a failed connection).
+# Everything else is refused *after* accepting: a socket closed before the handshake
+# completes reaches the browser as code 1006 whatever the server meant, and the client
+# could not tell "signed out" or "not a member" from a network drop, so it would retry
+# for ever. Nothing is sent before the close.
 
 WS_UNAUTHORIZED = 4401
 WS_FORBIDDEN = 4403
@@ -141,8 +148,14 @@ async def websocket_principal(websocket: WebSocket) -> Principal:
     session_id = websocket.cookies.get(SESSION_COOKIE)
     session = await module.sessions.resolve(session_id) if session_id else None
     if session is None:
+        await _accept_to_refuse(websocket)
         raise WebSocketException(WS_UNAUTHORIZED, "not signed in")
     return session.principal()
+
+
+async def _accept_to_refuse(websocket: WebSocket) -> None:
+    if websocket.client_state is WebSocketState.CONNECTING:
+        await websocket.accept()
 
 
 def require_websocket_home_access(
@@ -156,6 +169,7 @@ def require_websocket_home_access(
         try:
             return await module.service.access(principal, HomeId(home_id), permission)
         except IdentityError as exc:
+            await _accept_to_refuse(websocket)
             raise WebSocketException(WS_FORBIDDEN, "no access to this home") from exc
 
     return dependency

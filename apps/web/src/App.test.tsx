@@ -135,4 +135,15 @@ describe("Home floor plan", () => {
     expect(FakeSocket.instances).toHaveLength(2);
     vi.useRealTimers();
   });
+
+  it("says so, and stops retrying, when the person is not a member of the home", async () => {
+    openHome({ "GET /api/homes/h1": { status: 404, body: { title: "Home not found", status: 404 } } });
+    await screen.findByText("Connecting…");
+    FakeSocket.last().drop(4403);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/not a member/);
+    expect(screen.getByRole("status")).toHaveTextContent("No access");
+    expect(screen.queryByRole("group", { name: "Floor plan" })).not.toBeInTheDocument();
+    expect(FakeSocket.instances).toHaveLength(1);
+  });
 });

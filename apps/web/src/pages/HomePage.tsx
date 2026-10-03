@@ -66,11 +66,17 @@ export function HomePage() {
         {role !== "guest" && <NavLink to={`/homes/${homeId}/automations`}>Automations</NavLink>}
         <NavLink to={`/homes/${homeId}/scenes`}>Scenes</NavLink>
       </nav>
+      {live.connection === "forbidden" && (
+        <p role="alert">
+          This home does not exist or you are not a member of it. <Link to="/">Your homes</Link>
+        </p>
+      )}
       {live.connection === "signed-out" && (
         <p role="alert">
           Your session ended. <a href="/api/auth/login">Sign in again</a>.
         </p>
       )}
+      {live.connection !== "forbidden" && (
       <Routes>
         <Route
           index
@@ -117,6 +123,7 @@ export function HomePage() {
         />
         <Route path="scenes" element={<ScenesPage homeId={homeId} devices={devices} canManage={canManage} />} />
       </Routes>
+      )}
     </section>
   );
 }

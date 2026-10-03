@@ -33,3 +33,7 @@ infra/mqtt/certs/
 
 # Load test fleet credentials and reports
 .loadtest/
+
+# Playwright output
+e2e/test-results/
+e2e/playwright-report/

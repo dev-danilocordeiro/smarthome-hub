@@ -146,24 +146,36 @@ async def test_a_guest_sees_only_the_devices_of_their_pass(
     assert first["device_id"] == household.devices["hall"]
 
 
-@pytest.mark.parametrize("case", ["foreign origin", "no origin", "no session", "not a member"])
-async def test_handshakes_that_could_be_hijacked_or_unauthorized_are_refused(
-    server: str, household: Household, redis: Redis, case: str
+@pytest.mark.parametrize("origin", ["https://evil.example", None])
+async def test_a_handshake_from_another_origin_is_refused(
+    server: str, household: Household, origin: str | None
 ) -> None:
-    stranger = await sign_in(redis, f"stranger-{secrets.token_hex(4)}")
-    nobody = Member(stranger.principal, {"cookie": "__Host-smarthome_session=forged"})
-    member, origin = {
-        "foreign origin": (household.owner, "https://evil.example"),
-        "no origin": (household.owner, None),
-        "no session": (nobody, ORIGIN),
-        "not a member": (stranger, ORIGIN),
-    }[case]
-
+    """Cross-site WebSocket hijacking: the owner's cookie, sent by someone else's page."""
     with pytest.raises(InvalidStatus) as refused:
-        async with socket(server, household, member, origin=origin):
+        async with socket(server, household, household.owner, origin=origin):
             pass
 
     assert refused.value.response.status_code == 403
+
+
+@pytest.mark.parametrize(("case", "code"), [("no session", 4401), ("not a member", 4403)])
+async def test_a_socket_without_access_is_closed_with_a_code_the_browser_can_read(
+    server: str, household: Household, redis: Redis, case: str, code: int
+) -> None:
+    """Refused after the handshake: browsers report any refused handshake as 1006, which
+    the app would take for a network drop and retry for ever."""
+    stranger = await sign_in(redis, f"stranger-{secrets.token_hex(4)}")
+    member = {
+        "no session": Member(stranger.principal, {"cookie": "__Host-smarthome_session=forged"}),
+        "not a member": stranger,
+    }[case]
+
+    async with socket(server, household, member) as ws:
+        with pytest.raises(ConnectionClosed) as closed:
+            await receive(ws)
+
+    assert closed.value.rcvd is not None
+    assert closed.value.rcvd.code == code
 
 
 async def test_the_socket_closes_when_the_membership_is_revoked(
