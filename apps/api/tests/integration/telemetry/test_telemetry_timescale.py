@@ -41,6 +41,21 @@ def readings(
     ]
 
 
+async def refresh_aggregates(engine: AsyncEngine, start: datetime, end: datetime) -> None:
+    from sqlalchemy import text  # noqa: PLC0415
+
+    async with engine.connect() as conn:
+        autocommit = await conn.execution_options(isolation_level="AUTOCOMMIT")
+        for view in ("telemetry.readings_1m", "telemetry.readings_1h"):
+            await autocommit.execute(
+                text(
+                    f"CALL refresh_continuous_aggregate('{view}',"
+                    " CAST(:start AS timestamptz), CAST(:end AS timestamptz))"
+                ),
+                {"start": start, "end": end},
+            )
+
+
 async def test_writing_the_same_batch_twice_stores_it_once(engine: AsyncEngine) -> None:
     store = TimescaleReadings(engine)
     batch = readings(f"dev-{uuid4().hex[:8]}", NOW - timedelta(minutes=5), 50, timedelta(seconds=1))
@@ -58,6 +73,10 @@ async def test_history_comes_from_raw_rows_or_continuous_aggregates_with_the_sam
     batch = readings(device, start, 180, timedelta(minutes=1), value=0.0)  # values 0..179
     home = batch[0].home_id
     await store.write(batch)
+    # Backfilled rows land in a range the refresh policy may already have materialized
+    # (it runs whenever earlier tests left data behind); they show up at its next run.
+    # Refresh now instead of depending on when the policy last ran.
+    await refresh_aggregates(engine, start - timedelta(hours=1), NOW + timedelta(hours=1))
 
     raw = await store.series(
         home_id=home,
