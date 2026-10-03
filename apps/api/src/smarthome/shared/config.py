@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     database_pool_size: int = Field(default=10, ge=1)
     database_max_overflow: int = Field(default=5, ge=0)
 
-    redis_url: RedisDsn = RedisDsn("redis://localhost:16379/0")
+    redis_url: RedisDsn = RedisDsn("redis://:redis-dev-only@localhost:16379/0")
 
     # Upper bound for each dependency probe in /health/ready. Keeps the endpoint
     # fast enough for orchestrator probes even when a dependency hangs.

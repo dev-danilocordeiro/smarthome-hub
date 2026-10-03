@@ -1,0 +1,65 @@
+name: e2e
+
+# The whole stack in Docker, a simulated fleet that behaves (no injected faults), the web
+# app, and Playwright driving a real browser through Keycloak, the BFF, MQTT and the live
+# WebSocket (ADR 0015).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: browser tests against the full stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pipx install "poetry>=2.2,<3"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install the tools the dev workflow uses (devtools seed, simulator, web, Playwright)
+        run: |
+          for app in apps/api apps/simulator packages/device-protocol; do
+            (cd "$app" && poetry install --no-interaction)
+          done
+          npm ci
+          npx -w e2e playwright install --with-deps chromium
+      - name: Start the stack
+        run: make up
+      - name: Pair (first run) and run a fleet without faults
+        run: |
+          nohup make simulate FAULTS=0 > simulator.log 2>&1 &
+          timeout 300 bash -c 'until grep -q device_online simulator.log; do sleep 2; done'
+      - name: Start the web app
+        run: |
+          nohup npm run -w apps/web dev > vite.log 2>&1 &
+          timeout 60 bash -c 'until curl -sf -o /dev/null http://localhost:5173/; do sleep 1; done'
+      - name: Playwright
+        run: make e2e
+      - name: Logs
+        if: failure()
+        run: |
+          tail -n 50 simulator.log vite.log || true
+          docker compose --env-file .env -f infra/docker-compose.yml -f infra/docker-compose.observability.yml logs --tail 100 api worker ingestor
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7

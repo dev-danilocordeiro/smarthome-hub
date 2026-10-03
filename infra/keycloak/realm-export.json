@@ -116,5 +116,9 @@
         }
       ]
     }
-  ]
+  ],
+  "eventsEnabled": true,
+  "eventsExpiration": 2592000,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": false
 }

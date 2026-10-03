@@ -76,7 +76,7 @@ DEVTOOLS  := set -a; source .env; set +a; cd apps/api && \
 	SMARTHOME_MQTT_CA_FILE=$(CURDIR)/infra/mqtt/certs/ca.crt \
 	SMARTHOME_MQTT_PORT=$${MQTT_TLS_PORT:-8883} \
 	SMARTHOME_DATABASE_URL=postgresql+asyncpg://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@localhost:$${POSTGRES_PORT}/$${POSTGRES_DB} \
-	SMARTHOME_REDIS_URL=redis://localhost:$${REDIS_PORT}/0 \
+	SMARTHOME_REDIS_URL=redis://:$${REDIS_PASSWORD}@localhost:$${REDIS_PORT}/0 \
 	poetry run python -m smarthome.devtools.fleet
 
 $(SIM_DIR)/fleet.json:
@@ -174,6 +174,7 @@ lint: lint-imports ## Ruff, import-linter, ESLint
 typecheck: ## mypy --strict on every Python app, tsc on the web app
 	@for app in $(PY_APPS); do echo "==> mypy $$app"; (cd $$app && poetry run mypy) || exit 1; done
 	npm run -w apps/web typecheck
+	npm run -w e2e typecheck
 
 .PHONY: check-infra
 check-infra: .env ## Validate compose, collector, Prometheus (and its alert rule tests), Alertmanager, Tempo, Loki, dashboards and CI workflows
@@ -211,3 +212,7 @@ test-it: ## Integration tests: real Postgres/TimescaleDB, Redis, Keycloak, Mosqu
 
 .PHONY: test
 test: test-unit test-it ## All tests
+
+.PHONY: e2e
+e2e: ## Browser tests against the running stack (needs `make up`, `make simulate FAULTS=0`, `make web-dev`)
+	npm run -w e2e test
