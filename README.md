@@ -4,7 +4,7 @@ A multi-tenant smart home hub built to show **event-driven design, real-time
 telemetry, time-series storage, device security and observability**. Real hardware
 is optional: a simulator speaks the same MQTT protocol a real ESP32 would.
 
-> **Status:** phase 7 of 11 (commands). Most of the product below is still on the roadmap.
+> **Status:** phase 8 of 11 (automations). Most of the product below is still on the roadmap.
 > [Versão em português](README.pt-BR.md).
 
 ## What it will do
@@ -145,6 +145,32 @@ Every command has a `trace_id`. With the simulator running, open it in Tempo and
 one trace across four services: the API request, the worker's publish, the device
 handling the command and the ingestor receiving its acks.
 
+## Automations
+
+```http
+POST /homes/{home}/automations           {"name": "Hall light", "definition": {...}}
+POST /homes/{home}/automations/dry-run   {"definition": {...}, "from": "2026-10-01T00:00:00Z"}
+POST /homes/{home}/scenes/{id}/activate
+GET  /automations/schema                 # JSON Schema of the DSL, for editors
+```
+
+Automations are JSON documents ([DSL v1](docs/automations.md)): triggers on telemetry,
+twin properties, presence or the clock (in the home's time zone, DST included), with
+optional holds (`for_s`: "no motion for 5 minutes"); conditions; and commands or scenes
+as actions. Triggers are edge-triggered and every firing is recorded as a run with a
+`trace_id`.
+
+The ingestor publishes what changed to a **Redis stream**; the `worker` reads it with a
+consumer group, so replicas share the work and a redelivered event never runs an
+automation twice ([ADR 0010](docs/adr/0010-automations-event-stream-and-loop-protection.md)).
+Automations that would trigger each other forever are flagged when saved and
+**suspended** at run time (causal chain depth and rate limits). Edits are versioned
+(`If-Match`, full revision history), and the **dry run** replays up to a week of recorded
+telemetry through the engine's own rules to show when an automation would have run.
+
+With the simulator running, a motion reading, the automation it triggers, the command,
+the device and its acks show up as one trace in Tempo.
+
 ## Tour: follow one request through every signal
 
 ```bash
@@ -204,7 +230,7 @@ scripts/        repo tooling (import contract generator)
 5. ✅ Devices and provisioning: pairing, credentials, twin, LWT
 6. ✅ Telemetry: batched ingestion, hypertables, continuous aggregates
 7. ✅ Commands: ack, timeout, idempotency, trace propagation over MQTT
-8. Automations: DSL, rule engine, scenes, schedules, dry run
+8. ✅ Automations: DSL, rule engine, scenes, schedules, dry run
 9. Frontend: live floor plan, automation editor, history, PWA
 10. Energy, notifications, dashboards, alerts, load test
 11. Diagrams, remaining ADRs, threat model, ASVS checklist, E2E. Then a real ESP32.

@@ -5,7 +5,7 @@ eventos, telemetria em tempo real, séries temporais, segurança de dispositivos
 observabilidade**. Não precisa de hardware: um simulador fala o mesmo protocolo MQTT que um
 ESP32 real falaria.
 
-> **Status:** fase 7 de 11 (comandos). A documentação completa está no [README em inglês](README.md).
+> **Status:** fase 8 de 11 (automações). A documentação completa está no [README em inglês](README.md).
 
 ## Arquitetura
 
@@ -84,3 +84,18 @@ o resultado e comandos sem resposta até o prazo viram `timed_out` (uma resposta
 muda isso). Fechaduras e câmeras exigem `operate_locks` e login feito nos últimos 5 minutos.
 Cada comando tem um `trace_id`: no Tempo, um único trace cobre API, worker, dispositivo e
 ingestor ([ADR 0009](docs/adr/0009-commands-outbox-and-trace-propagation.md)).
+
+## Automações
+
+Automações são documentos JSON ([DSL v1](docs/automations.md)) com gatilhos de telemetria,
+propriedades do twin, presença ou horário (no fuso da casa, com horário de verão), com espera
+opcional (`for_s`: "sem movimento por 5 minutos"), condições, e comandos ou cenas como ações.
+Os gatilhos disparam na borda (quando passam a valer) e cada disparo vira um *run* com
+`trace_id`.
+
+O ingestor publica o que mudou num **Redis stream**; o `worker` consome com um consumer group,
+então réplicas dividem o trabalho e um evento reentregue nunca roda uma automação duas vezes.
+Automações que se disparariam em loop são apontadas ao salvar e **suspensas** em execução
+(profundidade da cadeia causal e limite de taxa). Edições são versionadas (`If-Match` e
+histórico de revisões) e o **dry run** reexecuta até uma semana de telemetria gravada com as
+mesmas regras do motor ([ADR 0010](docs/adr/0010-automations-event-stream-and-loop-protection.md)).

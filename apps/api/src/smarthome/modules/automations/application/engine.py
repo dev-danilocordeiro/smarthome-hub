@@ -10,6 +10,7 @@ Actions are issued after that transaction commits. A crash in between leaves the
 is the safe side for things like locks.
 """
 
+from contextlib import AbstractContextManager
 from datetime import timedelta
 from uuid import UUID
 
@@ -159,10 +160,11 @@ class AutomationEngine:
     async def fire_due_timers(self) -> int:
         started = 0
         for automation_id, index in await self._due_timers():
-            run, automation = await self._fire_timer(automation_id, index)
-            if run is not None and automation is not None:
-                started += 1
-                await self._execute(automation, run)
+            with self._span("automation timer", automation_id, index):
+                run, automation = await self._fire_timer(automation_id, index)
+                if run is not None and automation is not None:
+                    started += 1
+                    await self._execute(automation, run)
         return started
 
     async def _due_timers(self) -> list[tuple[UUID, int]]:
@@ -196,10 +198,11 @@ class AutomationEngine:
             due = await uow.schedules.due(self._clock.now(), limit=SWEEP_BATCH)
         started = 0
         for automation_id, index in due:
-            run, automation = await self._fire_schedule(automation_id, index)
-            if run is not None and automation is not None:
-                started += 1
-                await self._execute(automation, run)
+            with self._span("automation schedule", automation_id, index):
+                run, automation = await self._fire_schedule(automation_id, index)
+                if run is not None and automation is not None:
+                    started += 1
+                    await self._execute(automation, run)
         return started
 
     async def _fire_schedule(
@@ -231,6 +234,17 @@ class AutomationEngine:
         if suspended:
             await self._directory.invalidate(automation.home_id)
         return (run if run is not None and run.status is RunStatus.RUNNING else None), automation
+
+    @staticmethod
+    def _span(name: str, automation_id: UUID, index: int) -> AbstractContextManager[trace.Span]:
+        """A root span per timer or slot, so the run and its commands share a trace."""
+        return tracer.start_as_current_span(
+            name,
+            attributes={
+                "smarthome.automation.id": str(automation_id),
+                "smarthome.automation.trigger": index,
+            },
+        )
 
     # --- Running ------------------------------------------------------------------------
 
