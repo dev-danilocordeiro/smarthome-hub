@@ -50,6 +50,9 @@ class UserDirectory(Protocol):
     ) -> None: ...
 
     async def display_names(self, user_ids: list[UserId]) -> dict[UserId, str]: ...
+    async def emails(self, user_ids: list[UserId]) -> dict[UserId, str]:
+        """The last email the IdP gave for each user that has one."""
+        ...
 
 
 class AuditTrail(Protocol):

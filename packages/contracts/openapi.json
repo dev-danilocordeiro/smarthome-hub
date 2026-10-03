@@ -55,6 +55,131 @@
         "title": "ActivationOut",
         "type": "object"
       },
+      "AlertFilter": {
+        "enum": [
+          "open",
+          "resolved",
+          "all"
+        ],
+        "title": "AlertFilter",
+        "type": "string"
+      },
+      "AlertOut": {
+        "properties": {
+          "acknowledged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged At"
+          },
+          "acknowledged_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged By"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "device_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "opened_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opened At"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "warning",
+              "critical"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AlertStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "severity",
+          "status",
+          "device_id",
+          "title",
+          "details",
+          "opened_at",
+          "resolved_at",
+          "acknowledged_by",
+          "acknowledged_at"
+        ],
+        "title": "AlertOut",
+        "type": "object"
+      },
+      "AlertStatus": {
+        "enum": [
+          "pending",
+          "open",
+          "resolved"
+        ],
+        "title": "AlertStatus",
+        "type": "string"
+      },
       "AuditEntryOut": {
         "properties": {
           "action": {
@@ -278,6 +403,45 @@
         ],
         "title": "AutomationStatus",
         "type": "string"
+      },
+      "Bucket": {
+        "enum": [
+          "hour",
+          "day"
+        ],
+        "title": "Bucket",
+        "type": "string"
+      },
+      "BucketOut": {
+        "properties": {
+          "cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "wh": {
+            "title": "Wh",
+            "type": "number"
+          }
+        },
+        "required": [
+          "start",
+          "wh",
+          "cost"
+        ],
+        "title": "BucketOut",
+        "type": "object"
       },
       "ClaimOut": {
         "properties": {
@@ -695,6 +859,65 @@
         "title": "DeviceOut",
         "type": "object"
       },
+      "DeviceUsageOut": {
+        "properties": {
+          "cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "device_id": {
+            "title": "Device Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "room": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room"
+          },
+          "wh": {
+            "title": "Wh",
+            "type": "number"
+          },
+          "whole_home": {
+            "title": "Whole Home",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "device_id",
+          "name",
+          "room",
+          "whole_home",
+          "wh",
+          "cost"
+        ],
+        "title": "DeviceUsageOut",
+        "type": "object"
+      },
       "DryRunIn": {
         "properties": {
           "definition": {
@@ -844,6 +1067,27 @@
         "title": "HomeOut",
         "type": "object"
       },
+      "InboxOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "unread": {
+            "title": "Unread",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "unread"
+        ],
+        "title": "InboxOut",
+        "type": "object"
+      },
       "InvitationAccept": {
         "properties": {
           "token": {
@@ -980,6 +1224,27 @@
         "title": "LogoutOut",
         "type": "object"
       },
+      "MarkedOut": {
+        "properties": {
+          "marked": {
+            "title": "Marked",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "marked"
+        ],
+        "title": "MarkedOut",
+        "type": "object"
+      },
+      "MeasuredBy": {
+        "enum": [
+          "meter",
+          "submeters"
+        ],
+        "title": "MeasuredBy",
+        "type": "string"
+      },
       "MemberOut": {
         "properties": {
           "device_scope": {
@@ -1082,6 +1347,83 @@
         "title": "MqttCredentials",
         "type": "object"
       },
+      "NotificationOut": {
+        "properties": {
+          "alert_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alert Id"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "event": {
+            "title": "Event",
+            "type": "string"
+          },
+          "home_id": {
+            "format": "uuid",
+            "title": "Home Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "warning",
+              "critical"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "home_id",
+          "alert_id",
+          "event",
+          "severity",
+          "title",
+          "body",
+          "created_at",
+          "read_at"
+        ],
+        "title": "NotificationOut",
+        "type": "object"
+      },
       "Outcome": {
         "enum": [
           "would_run",
@@ -1154,6 +1496,94 @@
         "title": "PairingCodeOut",
         "type": "object"
       },
+      "PeriodIn": {
+        "properties": {
+          "end": {
+            "examples": [
+              "21:00"
+            ],
+            "title": "End",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "price": {
+            "description": "Price per kWh as a decimal string (exact; never a float).",
+            "examples": [
+              "0.891234"
+            ],
+            "pattern": "^\\d{1,4}(\\.\\d{1,6})?$",
+            "title": "Price",
+            "type": "string"
+          },
+          "start": {
+            "examples": [
+              "18:00"
+            ],
+            "title": "Start",
+            "type": "string"
+          },
+          "weekdays": {
+            "description": "0 = Monday",
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 7,
+            "minItems": 1,
+            "title": "Weekdays",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "weekdays",
+          "start",
+          "end",
+          "price"
+        ],
+        "title": "PeriodIn",
+        "type": "object"
+      },
+      "PeriodOut": {
+        "properties": {
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "price": {
+            "title": "Price",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          },
+          "weekdays": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Weekdays",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "weekdays",
+          "start",
+          "end",
+          "price"
+        ],
+        "title": "PeriodOut",
+        "type": "object"
+      },
       "PointOut": {
         "properties": {
           "avg": {
@@ -1186,6 +1616,115 @@
           "samples"
         ],
         "title": "PointOut",
+        "type": "object"
+      },
+      "PreferencesIn": {
+        "properties": {
+          "email_enabled": {
+            "default": true,
+            "title": "Email Enabled",
+            "type": "boolean"
+          },
+          "min_email_severity": {
+            "default": "warning",
+            "enum": [
+              "info",
+              "warning",
+              "critical"
+            ],
+            "title": "Min Email Severity",
+            "type": "string"
+          },
+          "quiet_end": {
+            "anyOf": [
+              {
+                "maximum": 23.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quiet End"
+          },
+          "quiet_start": {
+            "anyOf": [
+              {
+                "maximum": 23.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Hour, home time",
+            "title": "Quiet Start"
+          }
+        },
+        "title": "PreferencesIn",
+        "type": "object"
+      },
+      "PreferencesOut": {
+        "properties": {
+          "email_enabled": {
+            "default": true,
+            "title": "Email Enabled",
+            "type": "boolean"
+          },
+          "min_email_severity": {
+            "default": "warning",
+            "enum": [
+              "info",
+              "warning",
+              "critical"
+            ],
+            "title": "Min Email Severity",
+            "type": "string"
+          },
+          "quiet_end": {
+            "anyOf": [
+              {
+                "maximum": 23.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quiet End"
+          },
+          "quiet_start": {
+            "anyOf": [
+              {
+                "maximum": 23.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Hour, home time",
+            "title": "Quiet Start"
+          }
+        },
+        "title": "PreferencesOut",
+        "type": "object"
+      },
+      "QueuedOut": {
+        "properties": {
+          "idempotency_key": {
+            "title": "Idempotency Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "idempotency_key"
+        ],
+        "title": "QueuedOut",
         "type": "object"
       },
       "ReadinessResponse": {
@@ -1593,6 +2132,112 @@
         "title": "StatusChange",
         "type": "object"
       },
+      "TariffIn": {
+        "properties": {
+          "base_price": {
+            "description": "Price per kWh as a decimal string (exact; never a float).",
+            "examples": [
+              "0.891234"
+            ],
+            "pattern": "^\\d{1,4}(\\.\\d{1,6})?$",
+            "title": "Base Price",
+            "type": "string"
+          },
+          "currency": {
+            "examples": [
+              "BRL"
+            ],
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "monthly_budget_kwh": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{1,7}(\\.\\d{1,3})?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Budget Kwh"
+          },
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/PeriodIn"
+            },
+            "maxItems": 12,
+            "title": "Periods",
+            "type": "array"
+          }
+        },
+        "required": [
+          "currency",
+          "base_price"
+        ],
+        "title": "TariffIn",
+        "type": "object"
+      },
+      "TariffOut": {
+        "properties": {
+          "base_price": {
+            "title": "Base Price",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "monthly_budget_kwh": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Budget Kwh"
+          },
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/PeriodOut"
+            },
+            "title": "Periods",
+            "type": "array"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by": {
+            "title": "Updated By",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "currency",
+          "base_price",
+          "periods",
+          "monthly_budget_kwh",
+          "timezone",
+          "version",
+          "updated_by",
+          "updated_at"
+        ],
+        "title": "TariffOut",
+        "type": "object"
+      },
       "TwinOut": {
         "properties": {
           "delta": {
@@ -1649,6 +2294,111 @@
           "in_sync"
         ],
         "title": "TwinOut",
+        "type": "object"
+      },
+      "UnreadOut": {
+        "properties": {
+          "unread": {
+            "title": "Unread",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "unread"
+        ],
+        "title": "UnreadOut",
+        "type": "object"
+      },
+      "UsageOut": {
+        "properties": {
+          "bucket": {
+            "$ref": "#/components/schemas/Bucket"
+          },
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/BucketOut"
+            },
+            "title": "Buckets",
+            "type": "array"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceUsageOut"
+            },
+            "title": "Devices",
+            "type": "array"
+          },
+          "from": {
+            "format": "date-time",
+            "title": "From",
+            "type": "string"
+          },
+          "measured_by": {
+            "$ref": "#/components/schemas/MeasuredBy",
+            "description": "`meter` when a whole-home meter reported in the range (the total is the meter), else `submeters` (the total is the sum of the plugs)."
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "to": {
+            "format": "date-time",
+            "title": "To",
+            "type": "string"
+          },
+          "total_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Cost"
+          },
+          "total_wh": {
+            "title": "Total Wh",
+            "type": "number"
+          },
+          "unmetered_wh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Meter minus plugs; null without a meter.",
+            "title": "Unmetered Wh"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "bucket",
+          "timezone",
+          "currency",
+          "measured_by",
+          "total_wh",
+          "total_cost",
+          "unmetered_wh",
+          "buckets",
+          "devices"
+        ],
+        "title": "UsageOut",
         "type": "object"
       },
       "UserOut": {
@@ -1726,6 +2476,74 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "WebhookIn": {
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "rotate_secret": {
+            "default": false,
+            "title": "Rotate Secret",
+            "type": "boolean"
+          },
+          "url": {
+            "examples": [
+              "https://example.com/hooks/smarthome"
+            ],
+            "maxLength": 500,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "WebhookIn",
+        "type": "object"
+      },
+      "WebhookOut": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only in the response that created or rotated it. Store it: it signs every delivery (X-Smarthome-Signature) and is never shown again.",
+            "title": "Secret"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by": {
+            "title": "Updated By",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "enabled",
+          "updated_by",
+          "updated_at"
+        ],
+        "title": "WebhookOut",
         "type": "object"
       }
     }
@@ -2016,6 +2834,129 @@
         "summary": "Get Home",
         "tags": [
           "homes"
+        ]
+      }
+    },
+    "/homes/{home_id}/alerts": {
+      "get": {
+        "description": "Alerts that have opened (newest first). A guest sees those of their devices.",
+        "operationId": "list_alerts_homes__home_id__alerts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AlertFilter",
+              "default": "open"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AlertOut"
+                  },
+                  "title": "Response List Alerts Homes  Home Id  Alerts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Alerts",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/homes/{home_id}/alerts/{alert_id}/acknowledge": {
+      "post": {
+        "description": "Say you are on it. The alert stays open until whatever caused it clears.",
+        "operationId": "acknowledge_homes__home_id__alerts__alert_id__acknowledge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "alert_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Alert Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Acknowledge",
+        "tags": [
+          "notifications"
         ]
       }
     },
@@ -3273,6 +4214,199 @@
         ]
       }
     },
+    "/homes/{home_id}/energy/tariff": {
+      "get": {
+        "operationId": "get_tariff_homes__home_id__energy_tariff_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TariffOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "No tariff set yet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tariff",
+        "tags": [
+          "energy"
+        ]
+      },
+      "put": {
+        "description": "Create the home's tariff, or replace it (If-Match with the current ETag).",
+        "operationId": "put_tariff_homes__home_id__energy_tariff_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TariffIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TariffOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "412": {
+            "description": "If-Match does not name the current version"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "428": {
+            "description": "A tariff exists and If-Match is missing"
+          }
+        },
+        "summary": "Put Tariff",
+        "tags": [
+          "energy"
+        ]
+      }
+    },
+    "/homes/{home_id}/energy/usage": {
+      "get": {
+        "description": "Consumption (and cost, once a tariff is set) in hourly or daily buckets of home\ntime, with a per-device breakdown. Up to 400 days.",
+        "operationId": "usage_homes__home_id__energy_usage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "To",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bucket",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Bucket",
+              "default": "day"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Usage",
+        "tags": [
+          "energy"
+        ]
+      }
+    },
     "/homes/{home_id}/invitations": {
       "post": {
         "operationId": "create_invitation_homes__home_id__invitations_post",
@@ -3416,6 +4550,101 @@
         "summary": "Remove Member",
         "tags": [
           "homes"
+        ]
+      }
+    },
+    "/homes/{home_id}/notification-preferences": {
+      "get": {
+        "description": "Your own preferences for this home (defaults until you change them).",
+        "operationId": "get_preferences_homes__home_id__notification_preferences_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Preferences",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "put": {
+        "operationId": "put_preferences_homes__home_id__notification_preferences_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencesIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Preferences",
+        "tags": [
+          "notifications"
         ]
       }
     },
@@ -3815,6 +5044,182 @@
         ]
       }
     },
+    "/homes/{home_id}/webhook": {
+      "delete": {
+        "operationId": "delete_webhook_homes__home_id__webhook_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Webhook",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "get": {
+        "operationId": "get_webhook_homes__home_id__webhook_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "No webhook"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Webhook",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "put": {
+        "description": "Where to POST alert transitions for this home. The response that creates the\nwebhook (or rotates its secret) is the only one that includes the secret.",
+        "operationId": "put_webhook_homes__home_id__webhook_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Webhook",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/homes/{home_id}/webhook/test": {
+      "post": {
+        "description": "Queue a signed `ping` delivery to the webhook.",
+        "operationId": "test_webhook_homes__home_id__webhook_test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "home_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Home Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueuedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Webhook",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/invitations/accept": {
       "post": {
         "operationId": "accept_invitation_invitations_accept_post",
@@ -3853,6 +5258,157 @@
         "summary": "Accept Invitation",
         "tags": [
           "homes"
+        ]
+      }
+    },
+    "/me/notifications": {
+      "get": {
+        "description": "Your notifications across your homes, newest first. Page with `before` (the\n`created_at` of the last item you have).",
+        "operationId": "inbox_me_notifications_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "unread_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Unread Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inbox",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/me/notifications/read-all": {
+      "post": {
+        "operationId": "mark_all_read_me_notifications_read_all_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mark All Read",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/me/notifications/unread-count": {
+      "get": {
+        "operationId": "unread_count_me_notifications_unread_count_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Unread Count",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/me/notifications/{notification_id}/read": {
+      "post": {
+        "operationId": "mark_read_me_notifications__notification_id__read_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Notification Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Read",
+        "tags": [
+          "notifications"
         ]
       }
     },

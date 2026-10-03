@@ -270,6 +270,18 @@ class PostgresUserDirectory:
         )
         return {UserId(r.subject): r.name for r in rows}
 
+    async def emails(self, user_ids: list[UserId]) -> dict[UserId, str]:
+        if not user_ids:
+            return {}
+        rows = await self._conn.execute(
+            text(
+                "SELECT subject, email FROM identity.users"
+                " WHERE subject = ANY(:ids) AND email IS NOT NULL"
+            ),
+            {"ids": list(user_ids)},
+        )
+        return {UserId(r.subject): r.email for r in rows}
+
 
 class PostgresAuditTrail:
     def __init__(self, conn: AsyncConnection) -> None:

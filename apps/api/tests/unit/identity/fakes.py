@@ -26,6 +26,7 @@ class Store:
     memberships: list[Membership] = field(default_factory=list)
     invitations: dict[bytes, Invitation] = field(default_factory=dict)
     names: dict[UserId, str] = field(default_factory=dict)
+    emails: dict[UserId, str] = field(default_factory=dict)
     audit: list[AuditEvent] = field(default_factory=list)
     commits: int = 0
 
@@ -101,9 +102,14 @@ class _Users:
         self, user_id: UserId, *, email: str | None, display_name: str | None, now: datetime
     ) -> None:
         self.s.names[user_id] = display_name or email or user_id
+        if email:
+            self.s.emails[user_id] = email
 
     async def display_names(self, user_ids: list[UserId]) -> dict[UserId, str]:
         return {u: self.s.names[u] for u in user_ids if u in self.s.names}
+
+    async def emails(self, user_ids: list[UserId]) -> dict[UserId, str]:
+        return {u: self.s.emails[u] for u in user_ids if u in self.s.emails}
 
 
 class _Audit:

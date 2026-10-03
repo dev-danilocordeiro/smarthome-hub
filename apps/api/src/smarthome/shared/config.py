@@ -110,6 +110,18 @@ class Settings(BaseSettings):
     # Energy (ADR 0012): how often counter readings are folded into hourly consumption.
     energy_rollup_interval_s: float = Field(default=60.0, gt=0)
 
+    # Alerts and notifications (ADR 0013).
+    alert_offline_grace_s: int = Field(default=300, ge=0)
+    alert_retention_days: int = Field(default=90, ge=1)
+    notification_dispatch_interval_s: float = Field(default=2.0, gt=0)
+    notification_emails_per_hour: int = Field(default=10, ge=1)
+    smtp_host: str = "localhost"
+    smtp_port: int = 1025
+    smtp_sender: str = "Smart Home Hub <alerts@smarthome.local>"
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_starttls: bool = False
+
     # Live WebSocket (ADR 0011): how often an open socket re-checks session and membership.
     live_recheck_interval_s: float = Field(default=60.0, gt=0)
 

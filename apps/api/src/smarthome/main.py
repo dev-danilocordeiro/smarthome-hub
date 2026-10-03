@@ -11,6 +11,7 @@ from smarthome.modules.commands import wiring as commands
 from smarthome.modules.devices import wiring as devices
 from smarthome.modules.energy import wiring as energy
 from smarthome.modules.identity import wiring as identity
+from smarthome.modules.notifications import wiring as notifications
 from smarthome.modules.telemetry import wiring as telemetry
 from smarthome.shared.clock import SystemClock
 from smarthome.shared.config import Settings, get_settings
@@ -35,6 +36,53 @@ log = structlog.get_logger(__name__)
 LIVE_BLOCK_S = 1.0
 
 
+def build_modules(app: FastAPI, settings: Settings) -> None:
+    """Every module's HTTP-side composition, on `app.state` where its routes find it."""
+    app.state.identity = identity.build(
+        settings,
+        engine=app.state.db_engine,
+        redis=app.state.redis,
+        http=app.state.http,
+        clock=SystemClock(),
+    )
+    app.state.devices = devices.build(
+        settings, engine=app.state.db_engine, redis=app.state.redis, clock=SystemClock()
+    )
+    app.state.telemetry = telemetry.build(
+        settings,
+        engine=app.state.db_engine,
+        redis=app.state.redis,
+        devices=app.state.devices.service,
+    )
+    app.state.commands = commands.build(
+        settings,
+        engine=app.state.db_engine,
+        devices=app.state.devices.service,
+        clock=SystemClock(),
+    )
+    app.state.automations = automations.build(
+        settings,
+        engine=app.state.db_engine,
+        redis=app.state.redis,
+        devices=app.state.devices.service,
+        telemetry=app.state.telemetry.queries,
+        commands=app.state.commands.service,
+        clock=SystemClock(),
+    )
+    app.state.energy = energy.build(
+        engine=app.state.db_engine, devices=app.state.devices.service, clock=SystemClock()
+    )
+    app.state.notifications = notifications.build(
+        settings,
+        engine=app.state.db_engine,
+        identity=app.state.identity.service,
+        clock=SystemClock(),
+    )
+    app.state.live = devices.build_live(
+        settings, devices=app.state.devices.service, telemetry=app.state.telemetry.queries
+    )
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Composition root for the HTTP entrypoint.
 
@@ -53,43 +101,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # One pooled client for outbound calls (OIDC provider today). Short timeouts: a
         # slow IdP must not pin request handlers.
         app.state.http = httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=2.0))
-        app.state.identity = identity.build(
-            resolved,
-            engine=app.state.db_engine,
-            redis=app.state.redis,
-            http=app.state.http,
-            clock=SystemClock(),
-        )
-        app.state.devices = devices.build(
-            resolved, engine=app.state.db_engine, redis=app.state.redis, clock=SystemClock()
-        )
-        app.state.telemetry = telemetry.build(
-            resolved,
-            engine=app.state.db_engine,
-            redis=app.state.redis,
-            devices=app.state.devices.service,
-        )
-        app.state.commands = commands.build(
-            resolved,
-            engine=app.state.db_engine,
-            devices=app.state.devices.service,
-            clock=SystemClock(),
-        )
-        app.state.automations = automations.build(
-            resolved,
-            engine=app.state.db_engine,
-            redis=app.state.redis,
-            devices=app.state.devices.service,
-            telemetry=app.state.telemetry.queries,
-            commands=app.state.commands.service,
-            clock=SystemClock(),
-        )
-        app.state.energy = energy.build(
-            engine=app.state.db_engine, devices=app.state.devices.service, clock=SystemClock()
-        )
-        app.state.live = devices.build_live(
-            resolved, devices=app.state.devices.service, telemetry=app.state.telemetry.queries
-        )
+        build_modules(app, resolved)
         # Its own connection: XREAD blocks. Every API replica tails the stream, so each
         # one can serve the live sockets of any home (ADR 0011).
         stream_redis = create_redis(resolved, socket_timeout=LIVE_BLOCK_S + 5)
@@ -132,6 +144,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     commands.mount(app)
     automations.mount(app)
     energy.mount(app)
+    notifications.mount(app)
     if resolved.diagnostics_enabled:
         app.include_router(diagnostics_router)
     instrument_app(app)

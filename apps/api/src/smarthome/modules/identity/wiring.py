@@ -16,7 +16,12 @@ from smarthome.modules.identity.infrastructure.sessions import RedisSessionStore
 from smarthome.shared.clock import Clock
 from smarthome.shared.config import Settings
 
-__all__ = ["IdentityModule", "build", "mount"]
+__all__ = ["IdentityModule", "build", "build_service", "mount"]
+
+
+def build_service(*, engine: AsyncEngine, clock: Clock) -> IdentityService:
+    """Membership queries without sessions or the IdP (the worker's view of identity)."""
+    return IdentityService(lambda: PostgresUnitOfWork(engine), clock)
 
 
 def build(
@@ -35,7 +40,7 @@ def build(
         clock=clock,
         absolute_lifetime=timedelta(hours=settings.session_absolute_lifetime_hours),
     )
-    service = IdentityService(lambda: PostgresUnitOfWork(engine), clock)
+    service = build_service(engine=engine, clock=clock)
     return IdentityModule(service=service, sessions=sessions, settings=settings, clock=clock)
 
 

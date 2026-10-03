@@ -6,6 +6,8 @@ Background work over the same modules as the API:
 - the automation engine: device events (Redis stream, consumer group), hold timers and
   schedules (ADR 0010);
 - the energy rollup: counter readings into hourly consumption (ADR 0012);
+- alerts: device events (their own consumer group), grace timers, energy budgets, and
+  the delivery queue for email and webhooks (ADR 0013);
 - housekeeping: processed outbox messages, old automation runs, interrupted runs.
 
 Plain asyncio loops, no job queue (ADR 0009). Several replicas can run side by side.
@@ -25,6 +27,8 @@ from smarthome.modules.automations import wiring as automations
 from smarthome.modules.commands import wiring as commands
 from smarthome.modules.devices import wiring as devices
 from smarthome.modules.energy import wiring as energy
+from smarthome.modules.identity import wiring as identity
+from smarthome.modules.notifications import wiring as notifications
 from smarthome.modules.telemetry import wiring as telemetry
 from smarthome.shared.clock import SystemClock
 from smarthome.shared.config import Settings, get_settings
@@ -41,6 +45,7 @@ log = structlog.get_logger(__name__)
 HEARTBEAT_FILE = Path("/tmp/worker-heartbeat")  # noqa: S108 - tmpfs in the container
 PURGE_EVERY_S = 3600.0
 SCHEDULE_EVERY_S = 5.0
+BUDGET_EVERY_S = 300.0
 STREAM_BLOCK_MS = 2000
 
 
@@ -68,6 +73,7 @@ async def run(settings: Settings) -> None:
     # Its own connection pool: XREADGROUP blocks, which must not starve other callers.
     stream_redis = create_redis(settings, socket_timeout=STREAM_BLOCK_MS / 1000 + 5)
     clock = SystemClock()
+    webhooks_http = notifications.webhook_client()
     publisher = MqttPublisher(
         PublisherConfig(
             host=settings.mqtt_host,
@@ -113,6 +119,26 @@ async def run(settings: Settings) -> None:
             telemetry=telemetry.build_queries(engine=engine, redis=redis),
             clock=clock,
         )
+        alert_engine = notifications.build_engine(
+            settings,
+            engine=engine,
+            identity=identity.build_service(engine=engine, clock=clock),
+            devices=device_service,
+            energy=energy.build_service(engine=engine, devices=device_service, clock=clock),
+            clock=clock,
+            events=events,
+        )
+        alert_consumer = StreamConsumer(
+            stream_redis,
+            group="notifications",
+            consumer=f"worker-{socket.gethostname()}",
+            handler=alert_engine.handle_event,
+            block_ms=STREAM_BLOCK_MS,
+        )
+        dispatcher = notifications.build_dispatcher(
+            settings, engine=engine, http=webhooks_http, clock=clock
+        )
+        alert_retention = timedelta(days=settings.alert_retention_days)
         run_retention = timedelta(days=settings.automation_run_retention_days)
 
         stop = asyncio.Event()
@@ -179,9 +205,38 @@ async def run(settings: Settings) -> None:
                     name="energy_rollup",
                 )
             )
+            tasks.create_task(alert_consumer.run(stop))
+            tasks.create_task(
+                every(
+                    settings.automation_timer_interval_s,
+                    alert_engine.fire_due,
+                    stop,
+                    name="alert_timers",
+                )
+            )
+            tasks.create_task(
+                every(BUDGET_EVERY_S, alert_engine.check_budgets, stop, name="energy_budgets")
+            )
+            tasks.create_task(
+                every(
+                    settings.notification_dispatch_interval_s,
+                    dispatcher.run_once,
+                    stop,
+                    name="notification_dispatch",
+                )
+            )
+            tasks.create_task(
+                every(
+                    PURGE_EVERY_S,
+                    lambda: alert_engine.purge(older_than=alert_retention),
+                    stop,
+                    name="purge_alerts",
+                )
+            )
             tasks.create_task(every(5, heartbeat, stop, name="heartbeat"))
     finally:
         await publisher.close()
+        await webhooks_http.aclose()
         await stream_redis.aclose()
         await redis.aclose()
         await engine.dispose()

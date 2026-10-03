@@ -167,6 +167,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/homes/{home_id}/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Alerts
+         * @description Alerts that have opened (newest first). A guest sees those of their devices.
+         */
+        get: operations["list_alerts_homes__home_id__alerts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/homes/{home_id}/alerts/{alert_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acknowledge
+         * @description Say you are on it. The alert stays open until whatever caused it clears.
+         */
+        post: operations["acknowledge_homes__home_id__alerts__alert_id__acknowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/homes/{home_id}/audit": {
         parameters: {
             query?: never;
@@ -471,6 +511,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/homes/{home_id}/energy/tariff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Tariff */
+        get: operations["get_tariff_homes__home_id__energy_tariff_get"];
+        /**
+         * Put Tariff
+         * @description Create the home's tariff, or replace it (If-Match with the current ETag).
+         */
+        put: operations["put_tariff_homes__home_id__energy_tariff_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/homes/{home_id}/energy/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Usage
+         * @description Consumption (and cost, once a tariff is set) in hourly or daily buckets of home
+         *     time, with a per-device breakdown. Up to 400 days.
+         */
+        get: operations["usage_homes__home_id__energy_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/homes/{home_id}/invitations": {
         parameters: {
             query?: never;
@@ -520,6 +602,27 @@ export interface paths {
          * @description Remove a member (owners), or leave the home yourself (anyone).
          */
         delete: operations["remove_member_homes__home_id__members__user_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/homes/{home_id}/notification-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Preferences
+         * @description Your own preferences for this home (defaults until you change them).
+         */
+        get: operations["get_preferences_homes__home_id__notification_preferences_get"];
+        /** Put Preferences */
+        put: operations["put_preferences_homes__home_id__notification_preferences_put"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -604,6 +707,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/homes/{home_id}/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Webhook */
+        get: operations["get_webhook_homes__home_id__webhook_get"];
+        /**
+         * Put Webhook
+         * @description Where to POST alert transitions for this home. The response that creates the
+         *     webhook (or rotates its secret) is the only one that includes the secret.
+         */
+        put: operations["put_webhook_homes__home_id__webhook_put"];
+        post?: never;
+        /** Delete Webhook */
+        delete: operations["delete_webhook_homes__home_id__webhook_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/homes/{home_id}/webhook/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Webhook
+         * @description Queue a signed `ping` delivery to the webhook.
+         */
+        post: operations["test_webhook_homes__home_id__webhook_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invitations/accept": {
         parameters: {
             query?: never;
@@ -615,6 +761,78 @@ export interface paths {
         put?: never;
         /** Accept Invitation */
         post: operations["accept_invitation_invitations_accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Inbox
+         * @description Your notifications across your homes, newest first. Page with `before` (the
+         *     `created_at` of the last item you have).
+         */
+        get: operations["inbox_me_notifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark All Read */
+        post: operations["mark_all_read_me_notifications_read_all_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Unread Count */
+        get: operations["unread_count_me_notifications_unread_count_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/notifications/{notification_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Read */
+        post: operations["mark_read_me_notifications__notification_id__read_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -660,6 +878,48 @@ export interface components {
             /** Outcomes */
             outcomes: components["schemas"]["ActionOutcomeOut"][];
         };
+        /**
+         * AlertFilter
+         * @enum {string}
+         */
+        AlertFilter: "open" | "resolved" | "all";
+        /** AlertOut */
+        AlertOut: {
+            /** Acknowledged At */
+            acknowledged_at: string | null;
+            /** Acknowledged By */
+            acknowledged_by: string | null;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /** Device Id */
+            device_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Opened At */
+            opened_at: string | null;
+            /** Resolved At */
+            resolved_at: string | null;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "warning" | "critical";
+            status: components["schemas"]["AlertStatus"];
+            /** Title */
+            title: string;
+        };
+        /**
+         * AlertStatus
+         * @enum {string}
+         */
+        AlertStatus: "pending" | "open" | "resolved";
         /** AuditEntryOut */
         AuditEntryOut: {
             /** Action */
@@ -762,6 +1022,23 @@ export interface components {
          * @enum {string}
          */
         AutomationStatus: "active" | "suspended";
+        /**
+         * Bucket
+         * @enum {string}
+         */
+        Bucket: "hour" | "day";
+        /** BucketOut */
+        BucketOut: {
+            /** Cost */
+            cost: string | null;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Wh */
+            wh: number;
+        };
         /** ClaimOut */
         ClaimOut: {
             /** Device Id */
@@ -904,6 +1181,21 @@ export interface components {
             /** Status Reason */
             status_reason: string | null;
         };
+        /** DeviceUsageOut */
+        DeviceUsageOut: {
+            /** Cost */
+            cost: string | null;
+            /** Device Id */
+            device_id: string;
+            /** Name */
+            name: string | null;
+            /** Room */
+            room: string | null;
+            /** Wh */
+            wh: number;
+            /** Whole Home */
+            whole_home: boolean;
+        };
         /** DryRunIn */
         DryRunIn: {
             /** Definition */
@@ -961,6 +1253,13 @@ export interface components {
             role: components["schemas"]["Role"];
             /** Timezone */
             timezone: string;
+        };
+        /** InboxOut */
+        InboxOut: {
+            /** Items */
+            items: components["schemas"]["NotificationOut"][];
+            /** Unread */
+            unread: number;
         };
         /** InvitationAccept */
         InvitationAccept: {
@@ -1022,6 +1321,16 @@ export interface components {
             /** Logout Url */
             logout_url: string;
         };
+        /** MarkedOut */
+        MarkedOut: {
+            /** Marked */
+            marked: number;
+        };
+        /**
+         * MeasuredBy
+         * @enum {string}
+         */
+        MeasuredBy: "meter" | "submeters";
         /** MemberOut */
         MemberOut: {
             /** Device Scope */
@@ -1060,6 +1369,39 @@ export interface components {
             /** Username */
             username: string;
         };
+        /** NotificationOut */
+        NotificationOut: {
+            /** Alert Id */
+            alert_id: string | null;
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Event */
+            event: string;
+            /**
+             * Home Id
+             * Format: uuid
+             */
+            home_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Read At */
+            read_at: string | null;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "warning" | "critical";
+            /** Title */
+            title: string;
+        };
         /**
          * Outcome
          * @enum {string}
@@ -1087,6 +1429,45 @@ export interface components {
              */
             expires_at: string;
         };
+        /** PeriodIn */
+        PeriodIn: {
+            /**
+             * End
+             * @example 21:00
+             */
+            end: string;
+            /** Name */
+            name: string;
+            /**
+             * Price
+             * @description Price per kWh as a decimal string (exact; never a float).
+             * @example 0.891234
+             */
+            price: string;
+            /**
+             * Start
+             * @example 18:00
+             */
+            start: string;
+            /**
+             * Weekdays
+             * @description 0 = Monday
+             */
+            weekdays: number[];
+        };
+        /** PeriodOut */
+        PeriodOut: {
+            /** End */
+            end: string;
+            /** Name */
+            name: string;
+            /** Price */
+            price: string;
+            /** Start */
+            start: string;
+            /** Weekdays */
+            weekdays: number[];
+        };
         /** PointOut */
         PointOut: {
             /** Avg */
@@ -1102,6 +1483,53 @@ export interface components {
              * Format: date-time
              */
             time: string;
+        };
+        /** PreferencesIn */
+        PreferencesIn: {
+            /**
+             * Email Enabled
+             * @default true
+             */
+            email_enabled?: boolean;
+            /**
+             * Min Email Severity
+             * @default warning
+             * @enum {string}
+             */
+            min_email_severity?: "info" | "warning" | "critical";
+            /** Quiet End */
+            quiet_end?: number | null;
+            /**
+             * Quiet Start
+             * @description Hour, home time
+             */
+            quiet_start?: number | null;
+        };
+        /** PreferencesOut */
+        PreferencesOut: {
+            /**
+             * Email Enabled
+             * @default true
+             */
+            email_enabled?: boolean;
+            /**
+             * Min Email Severity
+             * @default warning
+             * @enum {string}
+             */
+            min_email_severity?: "info" | "warning" | "critical";
+            /** Quiet End */
+            quiet_end?: number | null;
+            /**
+             * Quiet Start
+             * @description Hour, home time
+             */
+            quiet_start?: number | null;
+        };
+        /** QueuedOut */
+        QueuedOut: {
+            /** Idempotency Key */
+            idempotency_key: string;
         };
         /** ReadinessResponse */
         ReadinessResponse: {
@@ -1271,6 +1699,46 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** TariffIn */
+        TariffIn: {
+            /**
+             * Base Price
+             * @description Price per kWh as a decimal string (exact; never a float).
+             * @example 0.891234
+             */
+            base_price: string;
+            /**
+             * Currency
+             * @example BRL
+             */
+            currency: string;
+            /** Monthly Budget Kwh */
+            monthly_budget_kwh?: string | null;
+            /** Periods */
+            periods?: components["schemas"]["PeriodIn"][];
+        };
+        /** TariffOut */
+        TariffOut: {
+            /** Base Price */
+            base_price: string;
+            /** Currency */
+            currency: string;
+            /** Monthly Budget Kwh */
+            monthly_budget_kwh: string | null;
+            /** Periods */
+            periods: components["schemas"]["PeriodOut"][];
+            /** Timezone */
+            timezone: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Updated By */
+            updated_by: string;
+            /** Version */
+            version: number;
+        };
         /** TwinOut */
         TwinOut: {
             /**
@@ -1295,6 +1763,44 @@ export interface components {
             /** Reported At */
             reported_at: string | null;
         };
+        /** UnreadOut */
+        UnreadOut: {
+            /** Unread */
+            unread: number;
+        };
+        /** UsageOut */
+        UsageOut: {
+            bucket: components["schemas"]["Bucket"];
+            /** Buckets */
+            buckets: components["schemas"]["BucketOut"][];
+            /** Currency */
+            currency: string | null;
+            /** Devices */
+            devices: components["schemas"]["DeviceUsageOut"][];
+            /**
+             * From
+             * Format: date-time
+             */
+            from: string;
+            /** @description `meter` when a whole-home meter reported in the range (the total is the meter), else `submeters` (the total is the sum of the plugs). */
+            measured_by: components["schemas"]["MeasuredBy"];
+            /** Timezone */
+            timezone: string;
+            /**
+             * To
+             * Format: date-time
+             */
+            to: string;
+            /** Total Cost */
+            total_cost: string | null;
+            /** Total Wh */
+            total_wh: number;
+            /**
+             * Unmetered Wh
+             * @description Meter minus plugs; null without a meter.
+             */
+            unmetered_wh: number | null;
+        };
         /** UserOut */
         UserOut: {
             /** Email */
@@ -1316,6 +1822,43 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** WebhookIn */
+        WebhookIn: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled?: boolean;
+            /**
+             * Rotate Secret
+             * @default false
+             */
+            rotate_secret?: boolean;
+            /**
+             * Url
+             * @example https://example.com/hooks/smarthome
+             */
+            url: string;
+        };
+        /** WebhookOut */
+        WebhookOut: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Secret
+             * @description Only in the response that created or rotated it. Store it: it signs every delivery (X-Smarthome-Signature) and is never shown again.
+             */
+            secret?: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Updated By */
+            updated_by: string;
+            /** Url */
+            url: string;
         };
     };
     responses: never;
@@ -1545,6 +2088,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HomeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_alerts_homes__home_id__alerts_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["AlertFilter"];
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                home_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_homes__home_id__alerts__alert_id__acknowledge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: string;
+                home_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertOut"];
                 };
             };
             /** @description Validation Error */
@@ -2292,6 +2901,130 @@ export interface operations {
             };
         };
     };
+    get_tariff_homes__home_id__energy_tariff_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                home_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TariffOut"];
+                };
+            };
+            /** @description No tariff set yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_tariff_homes__home_id__energy_tariff_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "if-match"?: string | null;
+            };
+            path: {
+                home_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TariffIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TariffOut"];
+                };
+            };
+            /** @description If-Match does not name the current version */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description A tariff exists and If-Match is missing */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    usage_homes__home_id__energy_usage_get: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                bucket?: components["schemas"]["Bucket"];
+            };
+            header?: never;
+            path: {
+                home_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_invitation_homes__home_id__invitations_post: {
         parameters: {
             query?: never;
@@ -2376,6 +3109,72 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_preferences_homes__home_id__notification_preferences_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                home_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferencesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_preferences_homes__home_id__notification_preferences_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                home_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreferencesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferencesOut"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -2623,6 +3422,139 @@ export interface operations {
             };
         };
     };
+    get_webhook_homes__home_id__webhook_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                home_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookOut"];
+                };
+            };
+            /** @description No webhook */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_webhook_homes__home_id__webhook_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                home_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_webhook_homes__home_id__webhook_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                home_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_webhook_homes__home_id__webhook_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                home_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueuedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     accept_invitation_invitations_accept_post: {
         parameters: {
             query?: never;
@@ -2644,6 +3576,108 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HomeOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inbox_me_notifications_get: {
+        parameters: {
+            query?: {
+                unread_only?: boolean;
+                limit?: number;
+                before?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_all_read_me_notifications_read_all_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkedOut"];
+                };
+            };
+        };
+    };
+    unread_count_me_notifications_unread_count_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadOut"];
+                };
+            };
+        };
+    };
+    mark_read_me_notifications__notification_id__read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
